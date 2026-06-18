@@ -102,6 +102,19 @@ object BlockSerializer {
 
     fun toJson(blocks: List<Block>): String = gson.toJson(blocks)
 
+    fun getPreviewText(content: String): String {
+        if (content.isBlank()) return ""
+        if (!isBlockJson(content)) {
+            return content.replace(Regex("^#+\\s*|\\*\\*|\\[\\[|]]|-\\s\\[.\\]\\s|#[\\wÀ-ɏ/]+"), "").trim()
+        }
+        val blocks = parse(content)
+        return blocks
+            .filter { it.type != BlockType.DIVIDER && it.type != BlockType.MAP }
+            .joinToString(" ") { it.text }
+            .replace(Regex("\\*\\*|\\[\\[|]]|#[\\wÀ-ɏ/]+"), "")
+            .trim()
+    }
+
     fun fromPlainText(text: String): List<Block> {
         if (text.isBlank()) return listOf(Block())
         val lines = text.lines()
@@ -168,6 +181,7 @@ fun BlockEditorScreen(
     onNavigateTo: (Int) -> Unit = {}
 ) {
     val note by noteViewModel.getNoteById(noteId).collectAsState(initial = null)
+    val subNotes by noteViewModel.getNotesByParent(noteId).collectAsState(initial = emptyList())
     val breadcrumbs by noteViewModel.getBreadcrumbs(noteId).collectAsState(initial = emptyList())
     val allNotes by noteViewModel.allNotes.collectAsState(initial = emptyList())
     val authenticatedNoteIds by noteViewModel.authenticatedNoteIds.collectAsState()
@@ -182,6 +196,7 @@ fun BlockEditorScreen(
     var isAuthenticated by remember { mutableStateOf(false) }
     var lastSavedTitle by remember { mutableStateOf("") }
     var lastSavedJson by remember { mutableStateOf("") }
+    var subNotesExpanded by remember { mutableStateOf(false) }
 
     // Focus tracking
     var focusedBlockId by remember { mutableStateOf<String?>(null) }
@@ -437,6 +452,46 @@ fun BlockEditorScreen(
                             inner()
                         }
                     )
+
+                    // Sub-notes preview
+                    if (subNotes.isNotEmpty()) {
+                        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .clickable { subNotesExpanded = !subNotesExpanded }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Jeszcze ${subNotes.size} w tej notatce",
+                                    fontSize = 13.sp,
+                                    color = md_theme_link_color,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Icon(
+                                    imageVector = if (subNotesExpanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = md_theme_link_color
+                                )
+                            }
+                            if (subNotesExpanded) {
+                                Column(modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 8.dp)) {
+                                    subNotes.forEach { subNote ->
+                                        Text(
+                                            text = subNote.title.ifBlank { "Bez tytułu" },
+                                            fontSize = 14.sp,
+                                            color = md_theme_light_onSurfaceVariant,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { onNavigateTo(subNote.id) }
+                                                .padding(vertical = 6.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     HorizontalDivider(color = md_theme_light_surfaceContainerHigh, modifier = Modifier.padding(horizontal = 20.dp))
                     Spacer(Modifier.height(8.dp))

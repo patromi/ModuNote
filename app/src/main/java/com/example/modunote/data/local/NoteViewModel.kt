@@ -55,6 +55,8 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getNoteById(id: Int): Flow<Note?> = noteDao.getNoteById(id)
 
+    fun getNotesByParent(parentId: Int): Flow<List<Note>> = noteDao.getNotesByParent(parentId)
+
     fun getBreadcrumbs(noteId: Int): Flow<List<Note>> = noteDao.getBreadcrumbs(noteId)
 
     fun insertNote(title: String, content: String, parentId: Int? = null, onResult: (Long) -> Unit = {}) {

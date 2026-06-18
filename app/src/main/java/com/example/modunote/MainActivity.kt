@@ -540,9 +540,7 @@ private fun PinnedNoteCard(note: Note, onClick: () -> Unit) {
                 if (note.content.isNotBlank() && !note.isLocked) {
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = note.content
-                            .replace(Regex("#[\\wÀ-ɏ/]+|\\*\\*|\\[\\[|]]|^#+\\s*"), "")
-                            .trim(),
+                        text = com.example.modunote.BlockSerializer.getPreviewText(note.content),
                         fontSize = 11.sp,
                         color = md_theme_light_onPrimaryContainer.copy(alpha = 0.7f),
                         maxLines = 2,
@@ -677,10 +675,10 @@ fun NoteTreeItem(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    val preview = item.note.content
-                    if (preview.isNotBlank() && !preview.startsWith("ENC:")) {
+                    val preview = if (item.note.isLocked) "" else com.example.modunote.BlockSerializer.getPreviewText(item.note.content)
+                    if (preview.isNotBlank()) {
                         Text(
-                            text = preview.replace(Regex("^#+\\s*|\\*\\*|\\[\\[|]]|-\\s\\[.\\]\\s|#[\\wÀ-ɏ/]+"), "").trim(),
+                            text = preview,
                             fontSize = 12.sp,
                             color = md_theme_light_onSurfaceVariant,
                             maxLines = 1,

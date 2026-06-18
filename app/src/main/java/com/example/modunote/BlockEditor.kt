@@ -209,7 +209,7 @@ fun buildHtmlForPrint(noteTitle: String, blocks: List<Block>): String {
             BlockType.CODE     -> body.append("<pre><code>${block.text.escapeHtml()}</code></pre>\n")
             BlockType.DIVIDER  -> body.append("<hr/>\n")
             BlockType.MAP      -> body.append("<p><em>[Mapa: ${block.address ?: "${block.latitude}, ${block.longitude}"}]</em></p>\n")
-            BlockType.LINK     -> body.append("<p>🔗 <a href=\"${block.url.escapeHtml()}\">${block.text.ifBlank { block.url }.escapeHtml()}</a></p>\n")
+            BlockType.LINK     -> body.append("<p>đź”— <a href=\"${block.url.escapeHtml()}\">${block.text.ifBlank { block.url }.escapeHtml()}</a></p>\n")
             else               -> body.append("<p>${block.text.escapeHtml()}</p>\n")
         }
     }
@@ -248,7 +248,7 @@ fun printNote(context: Context, noteTitle: String, blocks: List<Block>) {
     webView.webViewClient = object : WebViewClient() {
         override fun onPageFinished(view: WebView, url: String) {
             val printManager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
-            val jobName = "ModuNote – $noteTitle"
+            val jobName = "ModuNote â€“ $noteTitle"
             val adapter = view.createPrintDocumentAdapter(jobName)
             printManager.print(jobName, adapter, null)
         }
@@ -256,7 +256,54 @@ fun printNote(context: Context, noteTitle: String, blocks: List<Block>) {
     webView.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
 }
 
-// ─── BLOCK EDITOR SCREEN ───────────────────────────────────────────────────────
+fun shareNote(context: Context, noteTitle: String, blocks: List<Block>) {
+    val text = StringBuilder()
+    text.append("# ").append(noteTitle).append("\n\n")
+    var bulletIdx = 1
+    blocks.forEachIndexed { idx, block ->
+        when (block.type) {
+            BlockType.H1 -> text.append("# ").append(block.text).append("\n")
+            BlockType.H2 -> text.append("## ").append(block.text).append("\n")
+            BlockType.H3 -> text.append("### ").append(block.text).append("\n")
+            BlockType.BULLET -> text.append("â€˘ ").append(block.text).append("\n")
+            BlockType.NUMBERED -> {
+                text.append("${bulletIdx}. ").append(block.text).append("\n")
+                val nextIsNumbered = blocks.getOrNull(idx + 1)?.type == BlockType.NUMBERED
+                if (nextIsNumbered) {
+                    bulletIdx++
+                } else {
+                    bulletIdx = 1
+                }
+            }
+            BlockType.TODO -> {
+                val check = if (block.checked) "[x]" else "[ ]"
+                text.append(check).append(" ").append(block.text).append("\n")
+            }
+            BlockType.QUOTE -> text.append("> ").append(block.text).append("\n")
+            BlockType.CODE -> text.append("```\n").append(block.text).append("\n```\n")
+            BlockType.DIVIDER -> text.append("---\n")
+            BlockType.MAP -> {
+                val addr = block.address ?: "${block.latitude}, ${block.longitude}"
+                text.append("đź“Ť Mapa: ").append(addr).append("\n")
+            }
+            BlockType.LINK -> {
+                val label = block.text.ifBlank { block.url }
+                text.append("đź”— ").append(label).append(" (").append(block.url).append(")\n")
+            }
+            else -> text.append(block.text).append("\n")
+        }
+    }
+
+    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(android.content.Intent.EXTRA_SUBJECT, noteTitle)
+        putExtra(android.content.Intent.EXTRA_TEXT, text.toString())
+    }
+    val chooser = android.content.Intent.createChooser(intent, "UdostÄ™pnij notatkÄ™ za pomocÄ…")
+    context.startActivity(chooser)
+}
+
+// â”€â”€â”€ BLOCK EDITOR SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -445,7 +492,7 @@ fun BlockEditorScreen(
                             IconButton(onClick = { showMenu = true }) {
                                 Icon(Icons.Default.MoreVert, "Więcej opcji", tint = md_theme_light_onSurfaceVariant)
                             }
-                            val itemsVisible = remember(showMenu) { List(5) { mutableStateOf(false) } }
+                            val itemsVisible = remember(showMenu) { List(6) { mutableStateOf(false) } }
                             LaunchedEffect(showMenu) {
                                 if (showMenu) {
                                     itemsVisible.forEachIndexed { i, state ->
@@ -549,7 +596,7 @@ fun BlockEditorScreen(
 
                                 // ═══ Grupa 3: Drukowanie ════════════════════
                                 AnimatedVisibility(
-                                    visible = itemsVisible[4].value,
+                                    visible = itemsVisible[4].value || itemsVisible[5].value,
                                     enter = fadeIn(tween(160)) + slideInVertically(tween(220)) { -20 }
                                 ) {
                                     Surface(
@@ -557,14 +604,28 @@ fun BlockEditorScreen(
                                         tonalElevation = 8.dp,
                                         modifier = Modifier.padding(horizontal = 8.dp)
                                     ) {
-                                        DropdownMenuItem(
-                                            leadingIcon = { Icon(Icons.Default.Print, null, tint = md_theme_light_onSurfaceVariant) },
-                                            text = { Text("Drukuj notatkę") },
-                                            onClick = {
-                                                showMenu = false
-                                                printNote(context, title.ifBlank { "Notatka" }, blocks)
+                                        Column {
+                                            AnimatedVisibility(visible = itemsVisible[4].value, enter = fadeIn(tween(180)) + slideInVertically(tween(200)) { -10 }) {
+                                                DropdownMenuItem(
+                                                    leadingIcon = { Icon(Icons.Default.Print, null, tint = md_theme_light_onSurfaceVariant) },
+                                                    text = { Text("Drukuj notatkę") },
+                                                    onClick = {
+                                                        showMenu = false
+                                                        printNote(context, title.ifBlank { "Notatka" }, blocks)
+                                                    }
+                                                )
                                             }
-                                        )
+                                            AnimatedVisibility(visible = itemsVisible[5].value, enter = fadeIn(tween(180)) + slideInVertically(tween(200)) { -10 }) {
+                                                DropdownMenuItem(
+                                                    leadingIcon = { Icon(Icons.Default.Share, null, tint = md_theme_light_onSurfaceVariant) },
+                                                    text = { Text("Udostępnij notatkę") },
+                                                    onClick = {
+                                                        showMenu = false
+                                                        shareNote(context, title.ifBlank { "Notatka" }, blocks)
+                                                    }
+                                                )
+                                            }
+                                        }
                                     }
                                 }
 

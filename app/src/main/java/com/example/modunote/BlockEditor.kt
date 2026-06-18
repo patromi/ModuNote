@@ -209,6 +209,7 @@ fun BlockEditorScreen(
     var isAuthenticated by remember { mutableStateOf(false) }
     var lastSavedTitle by remember { mutableStateOf("") }
     var lastSavedJson by remember { mutableStateOf("") }
+    var gesturesEnabled by remember { mutableStateOf(true) }
 
     // Focus tracking
     var focusedBlockId by remember { mutableStateOf<String?>(null) }
@@ -448,14 +449,15 @@ fun BlockEditorScreen(
                         .padding(padding)
                         .verticalScroll(scrollState)
                         .imePadding()
-                        .pointerInput(noteId) {
+                        .pointerInput(noteId, gesturesEnabled) {
+                            if (!gesturesEnabled) return@pointerInput
                             awaitEachGesture {
                                 var accumulatedZoom = 1f
                                 var gestureTriggered = false
                                 awaitFirstDown(requireUnconsumed = false)
                                 do {
                                     val event = awaitPointerEvent()
-                                    val activePointers = event.changes.filter { it.pressed }
+                                    val activePointers = event.changes.filter { it.pressed && !it.isConsumed }
                                     if (activePointers.size >= 2) {
                                         event.changes.forEach { it.consume() }
                                         val p1 = activePointers[0]
@@ -686,7 +688,8 @@ fun BlockEditorScreen(
                                 onDragCancel = { draggedIndex = -1; dragOffsetY = 0f; dropIndex = -1 },
                                 onLocationChange = { lat, lon, addr ->
                                     updateBlock(block.id) { it.copy(latitude = lat, longitude = lon, address = addr) }
-                                }
+                                },
+                                onMapTouch = { gesturesEnabled = !it }
                             )
                         }
                     }
@@ -732,7 +735,8 @@ fun BlockItem(
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
     onDragCancel: () -> Unit,
-    onLocationChange: (Double, Double, String?) -> Unit = { _, _, _ -> }
+    onLocationChange: (Double, Double, String?) -> Unit = { _, _, _ -> },
+    onMapTouch: (Boolean) -> Unit = {}
 ) {
     // Divider block
     if (block.type == BlockType.DIVIDER) {
@@ -802,7 +806,8 @@ fun BlockItem(
             MapBlock(
                 block = block,
                 isFocused = isFocused,
-                onLocationChange = onLocationChange
+                onLocationChange = onLocationChange,
+                onMapTouch = onMapTouch
             )
         } else {
             Box(modifier = Modifier.weight(1f)) {
@@ -1076,7 +1081,8 @@ fun ReminderDialogBlock(
 fun MapBlock(
     block: Block,
     isFocused: Boolean,
-    onLocationChange: (Double, Double, String?) -> Unit
+    onLocationChange: (Double, Double, String?) -> Unit,
+    onMapTouch: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -1187,6 +1193,19 @@ fun MapBlock(
                 .height(240.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        try {
+                            awaitFirstDown(requireUnconsumed = false)
+                            onMapTouch(true)
+                            do {
+                                val event = awaitPointerEvent()
+                            } while (event.changes.any { it.pressed })
+                        } finally {
+                            onMapTouch(false)
+                        }
+                    }
+                }
         ) {
             AndroidView(
                 factory = { ctx ->

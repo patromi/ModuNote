@@ -173,7 +173,7 @@ object BlockSerializer {
     fun getPreviewText(content: String): String {
         if (content.isBlank()) return ""
         if (!isBlockJson(content)) {
-            return content.replace(Regex("^#+\\s*|\\*\\*|\\[\\[|]]|-\\s\\[.\\]\\s|#[\\wÀ-ɏ/]+"), "").trim()
+            return content.replace(Regex("^#+\\s*|\\*\\*|\\[\\[|]]|-\\s\\[.\\]\\s|#[\\w-/]+"), "").trim()
         }
         val blocks = parse(content)
         return blocks

@@ -63,7 +63,7 @@ private fun WidgetContent(notes: List<Note>) {
         } else {
             notes.forEach { note ->
                 Text(
-                    text = "• ${if (note.title.isBlank()) "Bez tytułu" else note.title}",
+                    text = "• ${note.title.ifBlank { "Bez tytułu" }}",
                     modifier = GlanceModifier.padding(top = 4.dp)
                 )
             }

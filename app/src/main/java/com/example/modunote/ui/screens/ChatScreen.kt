@@ -1,18 +1,58 @@
 package com.example.modunote.ui.screens
 
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.NoteAdd
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.NoteAdd
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,17 +60,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.modunote.data.local.NoteViewModel
 import com.example.modunote.network.ChatMessage
 import com.example.modunote.network.ChatRequest
 import com.example.modunote.network.OpenRouterClient
-import com.example.modunote.ui.theme.*
+import com.example.modunote.ui.theme.md_theme_light_background
+import com.example.modunote.ui.theme.md_theme_light_onPrimaryContainer
+import com.example.modunote.ui.theme.md_theme_light_onSurface
+import com.example.modunote.ui.theme.md_theme_light_onSurfaceVariant
+import com.example.modunote.ui.theme.md_theme_light_primaryContainer
+import com.example.modunote.ui.theme.md_theme_light_surfaceContainerHigh
+import com.example.modunote.ui.theme.md_theme_link_color
 import com.example.modunote.utils.BlockSerializer
 import com.google.gson.JsonParser
 import kotlinx.coroutines.launch
 
-private const val MODUNOTE_SYSTEM_PROMPT = """Jestes asystentem AI w aplikacji ModuNote - notatniku opartym na blokach (jak Notion).
+private const val MODUNOTE_SYSTEM_PROMPT = """Jesteś asystentem AI w aplikacji ModuNote - notatniku opartym na blokach (jak Notion).
 
 Gdy uzytkownik prosi o napisanie notatki, stworzenie planu, szablonu lub struktury - odpowiedz WYLACZNIE w tym formacie (nic poza tagiem):
 <note>{"title":"Tytul notatki","blocks":[{"id":"1","type":"TYP","text":"Tresc bloku","checked":false,"language":""}]}</note>
@@ -87,7 +132,7 @@ private fun parseNoteTitleFromJson(json: String): String =
 private fun extractBlocksJsonFromNoteJson(noteJson: String): String =
     runCatching {
         val blocksRaw = JsonParser.parseString(noteJson).asJsonObject.get("blocks")?.toString() ?: return@runCatching null
-        // re-parse and re-serialize via BlockSerializer so Gson types are guaranteed correct
+        // reparse and re-serialize via BlockSerializer so Gson types are guaranteed correct
         BlockSerializer.toJson(BlockSerializer.parse(blocksRaw))
     }.getOrNull() ?: aiTextToBlocksJson(noteJson)
 
@@ -119,7 +164,7 @@ fun ChatScreen(noteViewModel: NoteViewModel, onNavigateTo: (Int) -> Unit, onBack
     pendingNote?.let { pending ->
         AlertDialog(
             onDismissRequest = { pendingNote = null },
-            icon = { Icon(Icons.Default.NoteAdd, null, tint = Color(0xFF6650A4)) },
+            icon = { Icon(Icons.AutoMirrored.Filled.NoteAdd, null, tint = Color(0xFF6650A4)) },
             title = { Text("Zapisać notatkę?", fontWeight = FontWeight.SemiBold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -397,7 +442,7 @@ private fun ChatBubble(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Icon(Icons.Default.NoteAdd, null, tint = Color(0xFF6650A4), modifier = Modifier.size(22.dp))
+                        Icon(Icons.AutoMirrored.Filled.NoteAdd, null, tint = Color(0xFF6650A4), modifier = Modifier.size(22.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Notatka gotowa", style = MaterialTheme.typography.labelSmall, color = Color(0xFF6650A4))
                             Text(
@@ -421,7 +466,7 @@ private fun ChatBubble(
                     onClick = { onSaveNote("Notatka AI", aiTextToBlocksJson(msg.content)) },
                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                 ) {
-                    Icon(Icons.Default.NoteAdd, null, modifier = Modifier.size(14.dp))
+                    Icon(Icons.AutoMirrored.Filled.NoteAdd, null, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Zapisz jako notatkę", style = MaterialTheme.typography.labelSmall)
                 }

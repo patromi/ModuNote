@@ -1,13 +1,17 @@
 package com.example.modunote
 
 import android.content.Context
+import android.widget.Toast
 import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -17,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -203,7 +208,6 @@ fun BlockEditorScreen(
     var isAuthenticated by remember { mutableStateOf(false) }
     var lastSavedTitle by remember { mutableStateOf("") }
     var lastSavedJson by remember { mutableStateOf("") }
-    var subNotesExpanded by remember { mutableStateOf(false) }
 
     // Focus tracking
     var focusedBlockId by remember { mutableStateOf<String?>(null) }
@@ -443,6 +447,41 @@ fun BlockEditorScreen(
                         .padding(padding)
                         .verticalScroll(scrollState)
                         .imePadding()
+                        .pointerInput(noteId) {
+                            awaitEachGesture {
+                                var accumulatedZoom = 1f
+                                var gestureTriggered = false
+                                awaitFirstDown(requireUnconsumed = false)
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val activePointers = event.changes.filter { it.pressed }
+                                    if (activePointers.size >= 2) {
+                                        event.changes.forEach { it.consume() }
+                                        val p1 = activePointers[0]
+                                        val p2 = activePointers[1]
+                                        val prevDx = p1.previousPosition.x - p2.previousPosition.x
+                                        val prevDy = p1.previousPosition.y - p2.previousPosition.y
+                                        val prevDist = kotlin.math.sqrt(prevDx * prevDx + prevDy * prevDy)
+                                        val currDx = p1.position.x - p2.position.x
+                                        val currDy = p1.position.y - p2.position.y
+                                        val currDist = kotlin.math.sqrt(currDx * currDx + currDy * currDy)
+                                        if (prevDist > 0f && currDist > 0f) {
+                                            val zoom = currDist / prevDist
+                                            accumulatedZoom *= zoom
+                                            if (accumulatedZoom < 0.7f && !gestureTriggered) {
+                                                gestureTriggered = true
+                                                val parentId = note?.parentId
+                                                if (parentId != null) {
+                                                    onNavigateTo(parentId)
+                                                } else {
+                                                    Toast.makeText(context, "Brak notatki nadrzędnej", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                    }
+                                } while (event.changes.any { it.pressed })
+                            }
+                        }
                 ) {
                     // Page title
                     BasicTextField(
@@ -461,39 +500,116 @@ fun BlockEditorScreen(
                     )
 
                     // Sub-notes preview
-                    if (subNotes.isNotEmpty()) {
-                        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+                    var subNotesExpanded by remember { mutableStateOf(true) }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Row(
                                 modifier = Modifier
                                     .clickable { subNotesExpanded = !subNotesExpanded }
                                     .padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "Jeszcze ${subNotes.size} w tej notatce",
-                                    fontSize = 13.sp,
-                                    color = md_theme_link_color,
-                                    fontWeight = FontWeight.Medium
-                                )
                                 Icon(
                                     imageVector = if (subNotesExpanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                     contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = md_theme_link_color
+                                    modifier = Modifier.size(18.dp),
+                                    tint = md_theme_light_onSurfaceVariant
                                 )
-                            }
-                            if (subNotesExpanded) {
-                                Column(modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 8.dp)) {
-                                    subNotes.forEach { subNote ->
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "Podstrony",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = md_theme_light_onSurface
+                                )
+                                if (subNotes.isNotEmpty()) {
+                                    Spacer(Modifier.width(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .background(md_theme_light_surfaceContainerHigh, CircleShape)
+                                            .padding(horizontal = 6.dp, vertical = 1.5.dp)
+                                    ) {
                                         Text(
-                                            text = subNote.title.ifBlank { "Bez tytułu" },
-                                            fontSize = 14.sp,
-                                            color = md_theme_light_onSurfaceVariant,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable { onNavigateTo(subNote.id) }
-                                                .padding(vertical = 6.dp)
+                                            text = subNotes.size.toString(),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = md_theme_light_onSurfaceVariant
                                         )
+                                    }
+                                }
+                            }
+
+                            TextButton(
+                                onClick = {
+                                    noteViewModel.insertNote("", "", parentId = noteId) { newId ->
+                                        onNavigateTo(newId.toInt())
+                                    }
+                                },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(2.dp))
+                                Text("Dodaj", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+
+                        if (subNotesExpanded) {
+                            if (subNotes.isEmpty()) {
+                                Text(
+                                    text = "Brak podstron. Kliknij 'Dodaj', aby utworzyć nową.",
+                                    fontSize = 12.sp,
+                                    color = md_theme_light_onSurfaceVariant.copy(alpha = 0.6f),
+                                    fontStyle = FontStyle.Italic,
+                                    modifier = Modifier.padding(top = 4.dp, start = 22.dp)
+                                )
+                            } else {
+                                Spacer(Modifier.height(4.dp))
+                                val chunkedSubNotes = remember(subNotes) { subNotes.chunked(2) }
+                                Column(
+                                    modifier = Modifier.padding(start = 22.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    chunkedSubNotes.forEach { rowItems ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            rowItems.forEach { subNote ->
+                                                Row(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .clickable { onNavigateTo(subNote.id) }
+                                                        .padding(vertical = 6.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Description,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(14.dp),
+                                                        tint = md_theme_light_onSurfaceVariant.copy(alpha = 0.7f)
+                                                    )
+                                                    Spacer(Modifier.width(6.dp))
+                                                    Text(
+                                                        text = subNote.title.ifBlank { "Bez tytułu" },
+                                                        fontSize = 13.sp,
+                                                        color = md_theme_light_onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+                                            if (rowItems.size < 2) {
+                                                Spacer(modifier = Modifier.weight(1f))
+                                            }
+                                        }
                                     }
                                 }
                             }

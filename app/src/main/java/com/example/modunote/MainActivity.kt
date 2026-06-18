@@ -1338,7 +1338,7 @@ fun TemplateScreen(
                     Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(64.dp), tint = md_theme_light_onSurfaceVariant.copy(alpha = 0.4f))
                     Text("Brak szablonów", color = md_theme_light_onSurfaceVariant)
                     Text(
-                        "Otwórz notatkę i użyj przycisku  aby zapisać ją jako szablon.",
+                        "Otwórz notatkę i użyj przycisku, aby zapisać ją jako szablon.",
                         color = md_theme_light_onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,

@@ -3,7 +3,7 @@ package com.example.modunote.data.local
 import java.util.UUID
 
 enum class BlockType {
-    PARAGRAPH, H1, H2, H3, BULLET, NUMBERED, TODO, QUOTE, DIVIDER, CODE
+    PARAGRAPH, H1, H2, H3, BULLET, NUMBERED, TODO, QUOTE, DIVIDER, CODE, MAP
 }
 
 data class Block(
@@ -11,5 +11,7 @@ data class Block(
     val type: BlockType = BlockType.PARAGRAPH,
     val text: String = "",
     val checked: Boolean = false,
-    val language: String = ""
+    val language: String = "",
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )

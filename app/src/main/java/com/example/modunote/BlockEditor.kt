@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
@@ -51,6 +52,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.example.modunote.data.local.Block
@@ -62,8 +64,18 @@ import com.example.modunote.data.local.NoteViewModel
 import com.example.modunote.data.local.TagViewModel
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.MapEventsOverlay
+import org.osmdroid.views.overlay.Marker
+import java.net.HttpURLConnection
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -138,6 +150,7 @@ val SLASH_COMMANDS = listOf(
     SlashCommand("cytat", "Cytat", "Blok cytatu", BlockType.QUOTE, { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }),
     SlashCommand("podzial", "Linia", "Poziomy separator", BlockType.DIVIDER, { Icon(Icons.Default.HorizontalRule, null, Modifier.size(18.dp)) }),
     SlashCommand("kod", "Kod", "Blok kodu z monospace", BlockType.CODE, { Icon(Icons.Default.Code, null, Modifier.size(18.dp)) }),
+    SlashCommand("mapa", "Mapa", "Lokalizacja na mapie", BlockType.MAP, { Icon(Icons.Default.Map, null, Modifier.size(18.dp)) }),
 )
 
 // ─── BLOCK EDITOR SCREEN ───────────────────────────────────────────────────────
@@ -246,9 +259,14 @@ fun BlockEditorScreen(
     }
 
     fun convertBlock(id: String, type: BlockType) {
-        updateBlock(id) { it.copy(type = type, text = if (type == BlockType.DIVIDER) "" else it.text) }
+        updateBlock(id) { it.copy(
+            type = type,
+            text = if (type == BlockType.DIVIDER || type == BlockType.MAP) "" else it.text,
+            latitude = if (type == BlockType.MAP) 52.2297 else null, // Default to Warsaw
+            longitude = if (type == BlockType.MAP) 21.0122 else null
+        ) }
         slashBlockId = null; slashQuery = ""
-        if (type != BlockType.DIVIDER) focusBlock(id)
+        if (type != BlockType.DIVIDER && type != BlockType.MAP) focusBlock(id)
     }
 
     fun handleBlockEnter(id: String, before: String, after: String) {
@@ -486,6 +504,14 @@ fun BlockEditorScreen(
                                 },
                                 onDragCancel = { draggedIndex = -1; dragOffsetY = 0f; dropIndex = -1 }
                             )
+                            if (block.type == BlockType.MAP) {
+                                MapBlock(
+                                    block = block,
+                                    onLocationChange = { lat, lon ->
+                                        updateBlock(block.id) { it.copy(latitude = lat, longitude = lon) }
+                                    }
+                                )
+                            }
                         }
                     }
 
@@ -733,7 +759,7 @@ fun ReminderDialogBlock(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("Wlaczone"); Switch(enabled, { enabled = it })
+                    Text("Włączone"); Switch(enabled, { enabled = it })
                 }
                 if (enabled) {
                     OutlinedTextField(
@@ -772,3 +798,120 @@ fun ReminderDialogBlock(
         }
     )
 }
+
+@Composable
+fun MapBlock(
+    block: Block,
+    onLocationChange: (Double, Double) -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var query by remember { mutableStateOf("") }
+    var isSearching by remember { mutableStateOf(false) }
+
+    val geoPoint = remember(block.latitude, block.longitude) {
+        GeoPoint(block.latitude ?: 52.2297, block.longitude ?: 21.0122)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+    ) {
+        // Search bar
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Szukaj lokalizacji...", fontSize = 13.sp) },
+            trailingIcon = {
+                if (isSearching) {
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    IconButton(onClick = {
+                        if (query.isNotBlank()) {
+                            isSearching = true
+                            scope.launch(Dispatchers.IO) {
+                                try {
+                                    val url = URL("https://nominatim.openstreetmap.org/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}&format=json&limit=1")
+                                    val conn = url.openConnection() as HttpURLConnection
+                                    conn.setRequestProperty("User-Agent", "ModuNote-App")
+                                    val response = conn.inputStream.bufferedReader().readText()
+                                    val json = com.google.gson.JsonParser.parseString(response).asJsonArray
+                                    if (json.size() > 0) {
+                                        val first = json.get(0).asJsonObject
+                                        val lat = first.get("lat").asDouble
+                                        val lon = first.get("lon").asDouble
+                                        withContext(Dispatchers.Main) {
+                                            onLocationChange(lat, lon)
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                } finally {
+                                    isSearching = false
+                                }
+                            }
+                        }
+                    }) {
+                        Icon(Icons.Default.Search, null, Modifier.size(18.dp))
+                    }
+                }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            textStyle = TextStyle(fontSize = 14.sp)
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // Map View
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(240.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    MapView(ctx).apply {
+                        setTileSource(TileSourceFactory.MAPNIK)
+                        setMultiTouchControls(true)
+                        controller.setZoom(15.0)
+                        controller.setCenter(geoPoint)
+
+                        // Styling: Grayscale filter for a more "notey" look
+                        val matrix = android.graphics.ColorMatrix().apply { setSaturation(0f) }
+                        val filter = android.graphics.ColorMatrixColorFilter(matrix)
+                        overlayManager.tilesOverlay.setColorFilter(filter)
+
+                        // Click to set location
+                        val eventsReceiver = object : MapEventsReceiver {
+                            override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                                onLocationChange(p.latitude, p.longitude)
+                                return true
+                            }
+                            override fun longPressHelper(p: GeoPoint): Boolean = false
+                        }
+                        overlays.add(MapEventsOverlay(eventsReceiver))
+                    }
+                },
+                update = { view ->
+                    view.controller.setCenter(geoPoint)
+                    view.overlays.removeIf { it is Marker }
+                    val marker = Marker(view).apply {
+                        position = geoPoint
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        icon = ContextCompat.getDrawable(context, org.osmdroid.library.R.drawable.marker_default)
+                        icon?.setTint(android.graphics.Color.parseColor("#6650A4"))
+                    }
+                    view.overlays.add(marker)
+                    view.invalidate()
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+

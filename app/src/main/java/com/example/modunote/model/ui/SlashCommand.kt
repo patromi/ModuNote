@@ -1,4 +1,4 @@
-﻿package com.example.modunote.model.ui
+package com.example.modunote.model.ui
 
 
 
@@ -28,7 +28,7 @@ val SLASH_COMMANDS = listOf(
     SlashCommand("h1", "Nagłówek 1", "Duży tytuł", BlockType.H1, { Text("H1", fontWeight = FontWeight.Bold, fontSize = 14.sp) }),
     SlashCommand("h2", "Nagłówek 2", "Średni tytuł", BlockType.H2, { Text("H2", fontWeight = FontWeight.SemiBold, fontSize = 13.sp) }),
     SlashCommand("h3", "Nagłówek 3", "Mały tytuł", BlockType.H3, { Text("H3", fontWeight = FontWeight.Medium, fontSize = 12.sp) }),
-    SlashCommand("lista", "Lista punktowa", "• element", BlockType.BULLET, { Text("•", fontSize = 18.sp) }),
+    SlashCommand("lista", "Lista punktowa", "- element", BlockType.BULLET, { Text("-", fontSize = 18.sp) }),
     SlashCommand("numerowana", "Lista numerowana", "1. element", BlockType.NUMBERED, { Text("1.", fontSize = 13.sp) }),
     SlashCommand("zadanie", "Zadanie", "Checkbox do odhaczenia", BlockType.TODO, { Icon(Icons.Default.CheckBox, null, Modifier.size(18.dp)) }),
     SlashCommand("cytat", "Cytat", "Blok cytatu", BlockType.QUOTE, { Icon(Icons.Default.FormatQuote, null, Modifier.size(18.dp)) }),

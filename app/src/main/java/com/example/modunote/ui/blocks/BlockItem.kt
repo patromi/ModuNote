@@ -153,8 +153,8 @@ fun BlockItem(
 
         // Block-type prefix
         when (block.type) {
-            BlockType.BULLET -> Text("â€˘", modifier = Modifier.padding(end = 8.dp, top = 10.dp), fontSize = 16.sp, color = md_theme_light_onSurface)
-            BlockType.NUMBERED -> Text("$numberedIndex.", modifier = Modifier.padding(end = 6.dp, top = 10.dp), fontSize = 14.sp, color = md_theme_light_onSurfaceVariant)
+            BlockType.BULLET -> Text("-", modifier = Modifier.padding(end = 8.dp, top = 4.dp), fontSize = 16.sp, color = md_theme_light_onSurface)
+            BlockType.NUMBERED -> Text("$numberedIndex.", modifier = Modifier.padding(end = 6.dp, top = 4.dp), fontSize = 14.sp, color = md_theme_light_onSurfaceVariant)
             BlockType.TODO -> Checkbox(
                 checked = block.checked,
                 onCheckedChange = { onToggleCheck() },

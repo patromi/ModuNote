@@ -88,44 +88,11 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 
-val md_theme_light_background: Color
-    @Composable
-    @ReadOnlyComposable
-    get() = MaterialTheme.colorScheme.background
-
-val md_theme_light_onSurface: Color
-    @Composable
-    @ReadOnlyComposable
-    get() = MaterialTheme.colorScheme.onSurface
-
-val md_theme_light_onSurfaceVariant: Color
-    @Composable
-    @ReadOnlyComposable
-    get() = MaterialTheme.colorScheme.onSurfaceVariant
-
-val md_theme_light_surfaceContainerHigh: Color
-    @Composable
-    @ReadOnlyComposable
-    get() = MaterialTheme.colorScheme.surfaceContainerHigh
-
-val md_theme_light_primaryContainer: Color
-    @Composable
-    @ReadOnlyComposable
-    get() = MaterialTheme.colorScheme.primaryContainer
-
-val md_theme_light_onPrimaryContainer: Color
-    @Composable
-    @ReadOnlyComposable
-    get() = MaterialTheme.colorScheme.onPrimaryContainer
-
-val md_theme_link_color: Color
-    @Composable
-    @ReadOnlyComposable
-    get() = MaterialTheme.colorScheme.primary
-
-
-val LocalEnergySavingActive = compositionLocalOf { false }
-
+import com.example.modunote.ui.theme.*
+import com.example.modunote.ui.screens.BlockEditorScreen
+import com.example.modunote.utils.BlockSerializer
+import com.example.modunote.ui.theme.LocalEnergySavingActive
+import com.example.modunote.ui.theme.*
 class MainActivity : FragmentActivity() {
     private var isBatterySaverActive by mutableStateOf(false)
     private var powerSaveReceiver: android.content.BroadcastReceiver? = null
@@ -239,7 +206,7 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-// ─── HOME SCREEN ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ HOME SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -288,7 +255,7 @@ fun HomeScreen(
             BiometricPrompt(activity, executor, callback).authenticate(
                 BiometricPrompt.PromptInfo.Builder()
                     .setTitle("Notatka chroniona")
-                    .setSubtitle("Uwierzytelnij się, aby otworzyć")
+                    .setSubtitle("Uwierzytelnij siÄ™, aby otworzyÄ‡")
                     .setNegativeButtonText("Anuluj")
                     .build()
             )
@@ -318,13 +285,13 @@ fun HomeScreen(
                     actions = {
                         if (selectedTag != null) {
                             IconButton(onClick = { selectedTag = null }) {
-                                Icon(Icons.Default.FilterAltOff, "Wyczyść filtr", tint = md_theme_link_color)
+                                Icon(Icons.Default.FilterAltOff, "WyczyĹ›Ä‡ filtr", tint = md_theme_link_color)
                             }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = md_theme_light_background)
                 )
-                // Tag filter chips — visible when tags exist
+                // Tag filter chips â€” visible when tags exist
                 if (allTags.isNotEmpty()) {
                     LazyRow(
                         modifier = Modifier
@@ -414,7 +381,7 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(bottom = 96.dp)
             ) {
-                // ── Pinned section ──────────────────────────────────────────
+                // â”€â”€ Pinned section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 if (pinnedNotes.isNotEmpty() && selectedTag == null) {
                     item(key = "pinned_header") {
                         Row(
@@ -429,7 +396,7 @@ fun HomeScreen(
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                "Przypięte",
+                                "PrzypiÄ™te",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = md_theme_light_onPrimaryContainer,
                                 fontWeight = FontWeight.SemiBold
@@ -457,7 +424,7 @@ fun HomeScreen(
                     }
                 }
 
-                // ── Notes header ─────────────────────────────────────────────
+                // â”€â”€ Notes header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 item(key = "notes_header") {
                     Row(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -484,7 +451,7 @@ fun HomeScreen(
                     }
                 }
 
-                // ── Tree list ─────────────────────────────────────────────────
+                // â”€â”€ Tree list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 itemsIndexed(displayedNotes, key = { _, item -> item.note.id }) { index, item ->
                     val isDragging = draggedItemIndex == index
                     val isDropTarget = dropTargetIndex == index && draggedItemIndex != index
@@ -606,7 +573,7 @@ private fun PinnedNoteCard(note: Note, onClick: () -> Unit) {
                         Spacer(Modifier.width(4.dp))
                     }
                     Text(
-                        text = note.title.ifBlank { "Bez tytułu" },
+                        text = note.title.ifBlank { "Bez tytuĹ‚u" },
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp,
                         color = md_theme_light_onPrimaryContainer,
@@ -617,7 +584,7 @@ private fun PinnedNoteCard(note: Note, onClick: () -> Unit) {
                 if (note.content.isNotBlank() && !note.isLocked) {
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = com.example.modunote.BlockSerializer.getPreviewText(note.content),
+                        text = com.example.modunote.utils.BlockSerializer.getPreviewText(note.content),
                         fontSize = 11.sp,
                         color = md_theme_light_onPrimaryContainer.copy(alpha = 0.7f),
                         maxLines = 2,
@@ -626,7 +593,7 @@ private fun PinnedNoteCard(note: Note, onClick: () -> Unit) {
                 } else if (note.isLocked) {
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "••••••••",
+                        text = "â€˘â€˘â€˘â€˘â€˘â€˘â€˘â€˘",
                         fontSize = 11.sp,
                         color = md_theme_light_onPrimaryContainer.copy(alpha = 0.7f)
                     )
@@ -655,7 +622,7 @@ private fun PinnedNoteCard(note: Note, onClick: () -> Unit) {
     }
 }
 
-// ─── TREE ITEM ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ TREE ITEM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
 fun NoteTreeItem(
@@ -746,13 +713,13 @@ fun NoteTreeItem(
                             Spacer(Modifier.width(4.dp))
                         }
                         Text(
-                            text = if (item.note.title.isBlank()) "Bez tytułu" else item.note.title,
+                            text = if (item.note.title.isBlank()) "Bez tytuĹ‚u" else item.note.title,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    val preview = if (item.note.isLocked) "" else com.example.modunote.BlockSerializer.getPreviewText(item.note.content)
+                    val preview = if (item.note.isLocked) "" else com.example.modunote.utils.BlockSerializer.getPreviewText(item.note.content)
                     if (preview.isNotBlank()) {
                         Text(
                             text = preview,
@@ -762,7 +729,7 @@ fun NoteTreeItem(
                             overflow = TextOverflow.Ellipsis
                         )
                     } else if (item.note.isLocked) {
-                        Text("••••••••", fontSize = 12.sp, color = md_theme_light_onSurfaceVariant)
+                        Text("â€˘â€˘â€˘â€˘â€˘â€˘â€˘â€˘", fontSize = 12.sp, color = md_theme_light_onSurfaceVariant)
                     }
                     if (noteTags.isNotEmpty()) {
                         Spacer(Modifier.height(4.dp))
@@ -785,14 +752,14 @@ fun NoteTreeItem(
                     }
                 }
                 IconButton(onClick = { onAddChildClick() }) {
-                    Icon(Icons.Default.SubdirectoryArrowRight, "Dodaj podnotatkę", modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.SubdirectoryArrowRight, "Dodaj podnotatkÄ™", modifier = Modifier.size(18.dp))
                 }
             }
         }
     }
 }
 
-// ─── MARKDOWN PREVIEW ──────────────────────────────────────────────────────────
+// â”€â”€â”€ MARKDOWN PREVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
 fun MarkdownPreview(
@@ -865,7 +832,7 @@ fun MarkdownPreview(
                 }
                 rawLine.startsWith("- ") -> {
                     Row {
-                        Text("• ")
+                        Text("â€˘ ")
                         RichInlineText(rawLine.removePrefix("- "), onBacklinkClick)
                     }
                 }
@@ -917,7 +884,7 @@ fun buildRichAnnotatedString(text: String, linkColor: Color): AnnotatedString = 
 }
 
 
-// ─── NOTE EDITOR (legacy — replaced by BlockEditorScreen in BlockEditor.kt) ───
+// â”€â”€â”€ NOTE EDITOR (legacy â€” replaced by BlockEditorScreen in BlockEditor.kt) â”€â”€â”€
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -990,7 +957,7 @@ fun NoteEditorScreen(
         val cursor = contentValue.selection.end
         if (cursor > 0) {
             val beforeCursor = text.substring(0, cursor)
-            val wordMatch = Regex("""#([\wÀ-ɏ/]*)$""").find(beforeCursor)
+            val wordMatch = Regex("""#([\wĂ€-ÉŹ/]*)$""").find(beforeCursor)
             if (wordMatch != null) {
                 val prefix = wordMatch.groupValues[1]
                 tagSuggestions = tagViewModel.getSuggestions(prefix)
@@ -1064,7 +1031,7 @@ fun NoteEditorScreen(
                         IconButton(onClick = { previewMode = !previewMode }) {
                             Icon(
                                 if (previewMode) Icons.Default.Edit else Icons.Default.Visibility,
-                                contentDescription = if (previewMode) "Edytuj" else "Podgląd",
+                                contentDescription = if (previewMode) "Edytuj" else "PodglÄ…d",
                                 tint = if (previewMode) md_theme_light_onPrimaryContainer else md_theme_light_onSurfaceVariant
                             )
                         }
@@ -1131,7 +1098,7 @@ fun NoteEditorScreen(
                 ) {
                     itemsIndexed(breadcrumbs) { index, pathNote ->
                         Text(
-                            text = if (pathNote.title.isBlank()) "…" else pathNote.title,
+                            text = if (pathNote.title.isBlank()) "â€¦" else pathNote.title,
                             fontSize = 12.sp,
                             color = if (index == breadcrumbs.lastIndex) md_theme_light_onSurface else md_theme_light_onSurfaceVariant,
                             modifier = if (index < breadcrumbs.lastIndex) Modifier.clickable { onNavigateTo(pathNote.id) } else Modifier
@@ -1158,7 +1125,7 @@ fun NoteEditorScreen(
                                             val text = contentValue.text
                                             val cursor = contentValue.selection.end
                                             val beforeCursor = text.substring(0, cursor)
-                                            val wordMatch = Regex("""#([\wÀ-ɏ/]*)$""").find(beforeCursor)
+                                            val wordMatch = Regex("""#([\wĂ€-ÉŹ/]*)$""").find(beforeCursor)
                                             if (wordMatch != null) {
                                                 val start = wordMatch.range.first
                                                 val newText = text.replaceRange(start, cursor, "#$suggestion")
@@ -1220,7 +1187,7 @@ fun NoteEditorScreen(
                             }
                             BiometricPrompt(activity, executor, callback).authenticate(
                                 BiometricPrompt.PromptInfo.Builder()
-                                    .setTitle("Odblokuj notatkę")
+                                    .setTitle("Odblokuj notatkÄ™")
                                     .setNegativeButtonText("Anuluj")
                                     .build()
                             )
@@ -1251,7 +1218,7 @@ fun NoteEditorScreen(
                     TextField(
                         value = title,
                         onValueChange = { title = it },
-                        placeholder = { Text("Tytuł", fontSize = 24.sp, fontWeight = FontWeight.Bold) },
+                        placeholder = { Text("TytuĹ‚", fontSize = 24.sp, fontWeight = FontWeight.Bold) },
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).focusRequester(titleFocusRequester),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
@@ -1264,7 +1231,7 @@ fun NoteEditorScreen(
                     TextField(
                         value = contentValue,
                         onValueChange = { contentValue = it },
-                        placeholder = { Text("Zacznij pisać…") },
+                        placeholder = { Text("Zacznij pisaÄ‡â€¦") },
                         modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
@@ -1279,7 +1246,7 @@ fun NoteEditorScreen(
     }
 }
 
-// ─── REMINDER DIALOG ───────────────────────────────────────────────────────────
+// REMINDER DIALOG
 
 @Composable
 private fun ReminderDialog(
@@ -1309,7 +1276,7 @@ private fun ReminderDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("Włączone")
+                    Text("WĹ‚Ä…czone")
                     Switch(checked = enabled, onCheckedChange = { enabled = it })
                 }
                 if (enabled) {
@@ -1362,7 +1329,7 @@ private fun ReminderDialog(
             Row {
                 if (currentEnabled) {
                     TextButton(onClick = { onSave(0L, false) }) {
-                        Text("Usuń", color = MaterialTheme.colorScheme.error)
+                        Text("UsuĹ„", color = MaterialTheme.colorScheme.error)
                     }
                 }
                 TextButton(onClick = onDismiss) { Text("Anuluj") }
@@ -1371,7 +1338,7 @@ private fun ReminderDialog(
     )
 }
 
-// ─── TEMPLATE SCREEN ───────────────────────────────────────────────────────────
+// â”€â”€â”€ TEMPLATE SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1387,7 +1354,7 @@ fun TemplateScreen(
             onDismissRequest = { applyTarget = null },
             icon = { Icon(Icons.Default.ContentCopy, null) },
             title = { Text("Zastosuj szablon") },
-            text = { Text("Szablon \"${applyTarget!!.name}\" zostanie wstawiony jako notatka główna (${noteTemplateViewModel.countNodes(applyTarget!!)} węzłów).") },
+            text = { Text("Szablon \"${applyTarget!!.name}\" zostanie wstawiony jako notatka gĹ‚Ăłwna (${noteTemplateViewModel.countNodes(applyTarget!!)} wÄ™zĹ‚Ăłw).") },
             confirmButton = {
                 TextButton(onClick = {
                     noteTemplateViewModel.applyTemplate(applyTarget!!, null)
@@ -1441,7 +1408,7 @@ fun TemplateScreen(
                     Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(64.dp), tint = md_theme_light_onSurfaceVariant.copy(alpha = 0.4f))
                     Text("Brak szablonów", color = md_theme_light_onSurfaceVariant)
                     Text(
-                        "Otwórz notatkę i użyj przycisku, aby zapisać ją jako szablon.",
+                        "Otwórz notatkę i użyj przycisku, aby zapisać ja jako szablon.",
                         color = md_theme_light_onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -1476,7 +1443,7 @@ fun TemplateScreen(
                                 Icon(Icons.Default.PlayArrow, "Zastosuj", tint = md_theme_link_color)
                             }
                             IconButton(onClick = { noteTemplateViewModel.deleteTemplate(template) }) {
-                                Icon(Icons.Default.Delete, "Usuń", tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Default.Delete, "UsuĹ„", tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -1486,7 +1453,7 @@ fun TemplateScreen(
     }
 }
 
-// ─── CHAT SCREEN ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ CHAT SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 private const val MODUNOTE_SYSTEM_PROMPT = """Jestes asystentem AI w aplikacji ModuNote - notatniku opartym na blokach (jak Notion).
 
@@ -1578,10 +1545,10 @@ fun ChatScreen(noteViewModel: NoteViewModel, onNavigateTo: (Int) -> Unit, onBack
         AlertDialog(
             onDismissRequest = { pendingNote = null },
             icon = { Icon(Icons.Default.NoteAdd, null, tint = Color(0xFF6650A4)) },
-            title = { Text("Zapisać notatkę?", fontWeight = FontWeight.SemiBold) },
+            title = { Text("ZapisaÄ‡ notatkÄ™?", fontWeight = FontWeight.SemiBold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Tytuł notatki:", style = MaterialTheme.typography.labelMedium)
+                    Text("TytuĹ‚ notatki:", style = MaterialTheme.typography.labelMedium)
                     OutlinedTextField(
                         value = editableTitle,
                         onValueChange = { editableTitle = it },
@@ -1598,7 +1565,7 @@ fun ChatScreen(noteViewModel: NoteViewModel, onNavigateTo: (Int) -> Unit, onBack
                     noteViewModel.insertNote(editableTitle.trim().ifBlank { "Notatka AI" }, blocksJson) { id ->
                         onNavigateTo(id.toInt())
                     }
-                }) { Text("Utwórz notatkę") }
+                }) { Text("UtwĂłrz notatkÄ™") }
             },
             dismissButton = {
                 TextButton(onClick = { pendingNote = null }) { Text("Anuluj") }
@@ -1651,7 +1618,7 @@ fun ChatScreen(noteViewModel: NoteViewModel, onNavigateTo: (Int) -> Unit, onBack
             title = { Text("Klucz API OpenRouter") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Wpisz swój klucz z openrouter.ai", style = MaterialTheme.typography.bodySmall)
+                    Text("Wpisz swĂłj klucz z openrouter.ai", style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = tempKey,
                         onValueChange = { tempKey = it },
@@ -1707,7 +1674,7 @@ fun ChatScreen(noteViewModel: NoteViewModel, onNavigateTo: (Int) -> Unit, onBack
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Wróć") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "WrĂłÄ‡") }
                 },
                 actions = {
                     IconButton(onClick = { showApiKeyDialog = true }) {
@@ -1715,7 +1682,7 @@ fun ChatScreen(noteViewModel: NoteViewModel, onNavigateTo: (Int) -> Unit, onBack
                     }
                     if (messages.isNotEmpty()) {
                         IconButton(onClick = { messages = emptyList() }) {
-                            Icon(Icons.Default.Delete, "Wyczyść")
+                            Icon(Icons.Default.Delete, "WyczyĹ›Ä‡")
                         }
                     }
                 },
@@ -1731,7 +1698,7 @@ fun ChatScreen(noteViewModel: NoteViewModel, onNavigateTo: (Int) -> Unit, onBack
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = { inputText = it },
-                        placeholder = { Text("Napisz wiadomość…") },
+                        placeholder = { Text("Napisz wiadomoĹ›Ä‡â€¦") },
                         modifier = Modifier.weight(1f),
                         maxLines = 4,
                         shape = RoundedCornerShape(24.dp)
@@ -1742,7 +1709,7 @@ fun ChatScreen(noteViewModel: NoteViewModel, onNavigateTo: (Int) -> Unit, onBack
                         enabled = inputText.isNotBlank() && !isLoading && apiKey.isNotEmpty()
                     ) {
                         if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
-                        else Icon(Icons.Default.Send, "Wyślij")
+                        else Icon(Icons.Default.Send, "WyĹ›lij")
                     }
                 }
             }
@@ -1751,7 +1718,7 @@ fun ChatScreen(noteViewModel: NoteViewModel, onNavigateTo: (Int) -> Unit, onBack
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (errorMsg != null) {
                 Text(
-                    text = "Błąd: $errorMsg",
+                    text = "BĹ‚Ä…d: $errorMsg",
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.bodySmall
@@ -1791,7 +1758,7 @@ fun ChatScreen(noteViewModel: NoteViewModel, onNavigateTo: (Int) -> Unit, onBack
                                     Row(modifier = Modifier.padding(12.dp, 10.dp), verticalAlignment = Alignment.CenterVertically) {
                                         CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                                         Spacer(Modifier.width(8.dp))
-                                        Text("Odpowiadam…", style = MaterialTheme.typography.bodySmall)
+                                        Text("Odpowiadamâ€¦", style = MaterialTheme.typography.bodySmall)
                                     }
                                 }
                             }
@@ -1840,7 +1807,7 @@ private fun ChatBubble(
                 }
             }
 
-            // Auto-detected structured note → prominent save card
+            // Auto-detected structured note â†’ prominent save card
             if (!isUser && noteJson != null && onSaveNote != null) {
                 Surface(
                     shape = RoundedCornerShape(14.dp),
@@ -1868,12 +1835,12 @@ private fun ChatBubble(
                         FilledTonalButton(
                             onClick = { onSaveNote(noteTitle ?: "Notatka AI", extractBlocksJsonFromNoteJson(noteJson)) },
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                        ) { Text("Zapisz i otwórz", style = MaterialTheme.typography.labelMedium) }
+                        ) { Text("Zapisz i otwĂłrz", style = MaterialTheme.typography.labelMedium) }
                     }
                 }
             }
 
-            // All AI messages (no structured note) → small manual save chip
+            // All AI messages (no structured note) â†’ small manual save chip
             if (!isUser && noteJson == null && onSaveNote != null && msg.content.isNotBlank()) {
                 TextButton(
                     onClick = { onSaveNote("Notatka AI", aiTextToBlocksJson(msg.content)) },
@@ -1881,7 +1848,7 @@ private fun ChatBubble(
                 ) {
                     Icon(Icons.Default.NoteAdd, null, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Zapisz jako notatkę", style = MaterialTheme.typography.labelSmall)
+                    Text("Zapisz jako notatkÄ™", style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -1890,9 +1857,10 @@ private fun ChatBubble(
 
 
 
-// ─── HELPERS ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 fun TextFieldValue.insertAtCursor(textToInsert: String): TextFieldValue {
     val newText = text.replaceRange(selection.start, selection.end, textToInsert)
     return copy(text = newText, selection = TextRange(selection.start + textToInsert.length))
 }
+

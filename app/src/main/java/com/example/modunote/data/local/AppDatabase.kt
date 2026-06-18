@@ -6,13 +6,12 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [Note::class, CalendarEvent::class, NoteTemplate::class, NoteTag::class],
-    version = 3,
+    entities = [Note::class, NoteTemplate::class, NoteTag::class],
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
-    abstract fun calendarEventDao(): CalendarEventDao
     abstract fun noteTemplateDao(): NoteTemplateDao
     abstract fun noteTagDao(): NoteTagDao
 

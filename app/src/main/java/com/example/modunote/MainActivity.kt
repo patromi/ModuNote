@@ -1,4 +1,4 @@
-﻿package com.example.modunote
+package com.example.modunote
 
 import android.content.Context
 import android.os.Build
@@ -68,8 +68,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.modunote.data.local.CalendarEvent
-import com.example.modunote.data.local.CalendarEventViewModel
 import com.example.modunote.data.local.FlattenedNote
 import com.example.modunote.data.local.Note
 import com.example.modunote.data.local.NoteTemplate
@@ -164,7 +162,6 @@ class MainActivity : FragmentActivity() {
                 ) {
                 val navController = rememberNavController()
                 val noteViewModel: NoteViewModel = viewModel()
-                val calendarViewModel: CalendarEventViewModel = viewModel()
                 val noteTemplateViewModel: NoteTemplateViewModel = viewModel()
                 val tagViewModel: TagViewModel = viewModel()
                 NavHost(
@@ -224,16 +221,10 @@ class MainActivity : FragmentActivity() {
                             onBack = { navController.popBackStack() }
                         )
                     }
-                    composable("calendar") {
-                        CalendarScreen(
-                            viewModel = calendarViewModel,
-                            onBack = { navController.popBackStack() }
-                        )
-                    }
                     composable("templates") {
                         TemplateScreen(
                             noteTemplateViewModel = noteTemplateViewModel,
-                            onBack = { navController.popBackStack() }
+                            navController = navController
                         )
                     }
                 }
@@ -374,12 +365,6 @@ fun HomeScreen(
                     onClick = {},
                     icon = { Icon(Icons.Default.Notes, null) },
                     label = { Text("Notatki", fontSize = 11.sp) }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { navController.navigate("calendar") },
-                    icon = { Icon(Icons.Default.CalendarMonth, null) },
-                    label = { Text("Kalendarz", fontSize = 11.sp) }
                 )
                 NavigationBarItem(
                     selected = false,
@@ -1392,7 +1377,7 @@ private fun ReminderDialog(
 @Composable
 fun TemplateScreen(
     noteTemplateViewModel: NoteTemplateViewModel,
-    onBack: () -> Unit
+    navController: NavController
 ) {
     val templates by noteTemplateViewModel.allTemplates.collectAsState()
     var applyTarget by remember { mutableStateOf<NoteTemplate?>(null) }
@@ -1420,9 +1405,34 @@ fun TemplateScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Szablony", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Wróć") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = md_theme_light_background)
             )
+        },
+        bottomBar = {
+            NavigationBar(containerColor = md_theme_light_background) {
+                NavigationBarItem(
+                    selected = false,
+                    onClick = {
+                        navController.navigate("home") {
+                            popUpTo("home")
+                        }
+                    },
+                    icon = { Icon(Icons.Default.Notes, null) },
+                    label = { Text("Notatki", fontSize = 11.sp) }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { navController.navigate("chat") },
+                    icon = { Icon(Icons.Default.SmartToy, null) },
+                    label = { Text("Chat AI", fontSize = 11.sp) }
+                )
+                NavigationBarItem(
+                    selected = true,
+                    onClick = {},
+                    icon = { Icon(Icons.Default.ContentCopy, null) },
+                    label = { Text("Szablony", fontSize = 11.sp) }
+                )
+            }
         }
     ) { padding ->
         if (templates.isEmpty()) {
@@ -1878,318 +1888,7 @@ private fun ChatBubble(
     }
 }
 
-// ─── CALENDAR SCREEN ───────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CalendarScreen(viewModel: CalendarEventViewModel, onBack: () -> Unit) {
-    val today = Calendar.getInstance()
-    var displayYear by remember { mutableIntStateOf(today.get(Calendar.YEAR)) }
-    var displayMonth by remember { mutableIntStateOf(today.get(Calendar.MONTH)) }
-    var selectedDay by remember { mutableIntStateOf(today.get(Calendar.DAY_OF_MONTH)) }
-
-    val monthEvents by remember(displayYear, displayMonth) {
-        viewModel.eventsForMonth(displayYear, displayMonth)
-    }.collectAsState(initial = emptyList())
-
-    var showAddDialog by remember { mutableStateOf(false) }
-    var editingEvent by remember { mutableStateOf<CalendarEvent?>(null) }
-
-    val dayFmt = SimpleDateFormat("d MMMM yyyy", Locale("pl"))
-    val timeFmt = SimpleDateFormat("HH:mm", Locale("pl"))
-    val monthFmt = SimpleDateFormat("LLLL yyyy", Locale("pl"))
-
-    fun epochForDay(day: Int, hour: Int = 8, minute: Int = 0): Long {
-        return Calendar.getInstance().apply {
-            set(displayYear, displayMonth, day, hour, minute, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-    }
-
-    val eventsByDay = remember(monthEvents) {
-        monthEvents.groupBy {
-            Calendar.getInstance().apply { timeInMillis = it.startTime }.get(Calendar.DAY_OF_MONTH)
-        }
-    }
-
-    val daysInMonth = Calendar.getInstance().apply {
-        set(displayYear, displayMonth, 1)
-    }.getActualMaximum(Calendar.DAY_OF_MONTH)
-
-    val firstDayOfWeek = Calendar.getInstance().apply {
-        set(displayYear, displayMonth, 1)
-    }.get(Calendar.DAY_OF_WEEK).let { if (it == Calendar.SUNDAY) 6 else it - 2 }
-
-    val selectedDayEvents = eventsByDay[selectedDay] ?: emptyList()
-
-    if (showAddDialog || editingEvent != null) {
-        EventDialog(
-            event = editingEvent,
-            defaultStartEpoch = epochForDay(selectedDay),
-            onDismiss = { showAddDialog = false; editingEvent = null },
-            onSave = { title, desc, start, end ->
-                if (editingEvent != null) {
-                    viewModel.deleteEvent(editingEvent!!)
-                }
-                viewModel.addEvent(title, desc, start, end, null)
-                showAddDialog = false; editingEvent = null
-            },
-            onDelete = editingEvent?.let { ev -> { viewModel.deleteEvent(ev); editingEvent = null } }
-        )
-    }
-
-    Scaffold(
-        containerColor = md_theme_light_background,
-        topBar = {
-            TopAppBar(
-                title = { Text("Kalendarz", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Wróć") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = md_theme_light_background)
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, "Dodaj wydarzenie")
-            }
-        }
-    ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = {
-                    if (displayMonth == 0) { displayMonth = 11; displayYear-- } else displayMonth--
-                    selectedDay = 1
-                }) { Icon(Icons.Default.ArrowBack, "Poprzedni") }
-                Text(
-                    text = monthFmt.format(Calendar.getInstance().apply { set(displayYear, displayMonth, 1) }.time)
-                        .replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                IconButton(onClick = {
-                    if (displayMonth == 11) { displayMonth = 0; displayYear++ } else displayMonth++
-                    selectedDay = 1
-                }) { Icon(Icons.Default.ArrowForward, "Następny") }
-            }
-
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                listOf("Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd").forEach { day ->
-                    Text(
-                        text = day,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = md_theme_light_onSurfaceVariant,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                }
-            }
-
-            val cells = firstDayOfWeek + daysInMonth
-            val totalCells = if (cells % 7 == 0) cells else cells + (7 - cells % 7)
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(7),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                userScrollEnabled = false
-            ) {
-                items(totalCells) { index ->
-                    val day = index - firstDayOfWeek + 1
-                    if (day < 1 || day > daysInMonth) {
-                        Box(modifier = Modifier.aspectRatio(1f))
-                    } else {
-                        val isToday = day == today.get(Calendar.DAY_OF_MONTH) &&
-                            displayMonth == today.get(Calendar.MONTH) &&
-                            displayYear == today.get(Calendar.YEAR)
-                        val isSelected = day == selectedDay
-                        val hasEvents = eventsByDay.containsKey(day)
-                        Box(
-                            modifier = Modifier
-                                .aspectRatio(1f)
-                                .padding(2.dp)
-                                .then(
-                                    if (isSelected) Modifier.background(md_theme_link_color, CircleShape)
-                                    else if (isToday) Modifier.border(1.5.dp, md_theme_link_color, CircleShape)
-                                    else Modifier
-                                )
-                                .clickable { selectedDay = day },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = day.toString(),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (isSelected) Color.White else md_theme_light_onSurface,
-                                    fontWeight = if (isToday || isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                                if (hasEvents) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(4.dp)
-                                            .background(
-                                                if (isSelected) Color.White else md_theme_link_color,
-                                                CircleShape
-                                            )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            val selCal = Calendar.getInstance().apply { set(displayYear, displayMonth, selectedDay) }
-            Text(
-                text = dayFmt.format(selCal.time).replaceFirstChar { it.uppercase() },
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-            if (selectedDayEvents.isEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("Brak wydarzeń", color = md_theme_light_onSurfaceVariant)
-                }
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
-                    items(selectedDayEvents) { event ->
-                        EventCard(event = event, timeFmt = timeFmt, onClick = { editingEvent = event })
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EventCard(event: CalendarEvent, timeFmt: SimpleDateFormat, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = md_theme_light_surfaceContainerHigh)
-    ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.width(4.dp).height(40.dp).background(Color(event.color), RoundedCornerShape(2.dp)))
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(event.title, fontWeight = FontWeight.SemiBold)
-                Text(
-                    "${timeFmt.format(Date(event.startTime))} – ${timeFmt.format(Date(event.endTime))}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = md_theme_light_onSurfaceVariant
-                )
-                if (event.description.isNotBlank()) {
-                    Text(event.description, style = MaterialTheme.typography.bodySmall, color = md_theme_light_onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EventDialog(
-    event: CalendarEvent?,
-    defaultStartEpoch: Long,
-    onDismiss: () -> Unit,
-    onSave: (String, String, Long, Long) -> Unit,
-    onDelete: (() -> Unit)?
-) {
-    var title by remember { mutableStateOf(event?.title ?: "") }
-    var description by remember { mutableStateOf(event?.description ?: "") }
-
-    val startCal = Calendar.getInstance().apply {
-        timeInMillis = event?.startTime ?: defaultStartEpoch
-    }
-    val endCal = Calendar.getInstance().apply {
-        timeInMillis = event?.endTime ?: (defaultStartEpoch + 3600_000L)
-    }
-    var startHour by remember { mutableIntStateOf(startCal.get(Calendar.HOUR_OF_DAY)) }
-    var startMin by remember { mutableIntStateOf(startCal.get(Calendar.MINUTE)) }
-    var endHour by remember { mutableIntStateOf(endCal.get(Calendar.HOUR_OF_DAY)) }
-    var endMin by remember { mutableIntStateOf(endCal.get(Calendar.MINUTE)) }
-
-    fun buildEpoch(baseCal: Calendar, hour: Int, min: Int): Long {
-        return Calendar.getInstance().apply {
-            set(baseCal.get(Calendar.YEAR), baseCal.get(Calendar.MONTH), baseCal.get(Calendar.DAY_OF_MONTH), hour, min, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (event == null) "Nowe wydarzenie" else "Edytuj wydarzenie") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Tytuł *") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Opis") },
-                    maxLines = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = "%02d:%02d".format(startHour, startMin),
-                        onValueChange = {
-                            it.split(":").let { parts ->
-                                parts.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23)?.let { h -> startHour = h }
-                                parts.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59)?.let { m -> startMin = m }
-                            }
-                        },
-                        label = { Text("Od") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    OutlinedTextField(
-                        value = "%02d:%02d".format(endHour, endMin),
-                        onValueChange = {
-                            it.split(":").let { parts ->
-                                parts.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23)?.let { h -> endHour = h }
-                                parts.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59)?.let { m -> endMin = m }
-                            }
-                        },
-                        label = { Text("Do") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (title.isNotBlank()) {
-                        onSave(
-                            title.trim(),
-                            description.trim(),
-                            buildEpoch(startCal, startHour, startMin),
-                            buildEpoch(endCal, endHour, endMin)
-                        )
-                    }
-                },
-                enabled = title.isNotBlank()
-            ) { Text("Zapisz") }
-        },
-        dismissButton = {
-            Row {
-                if (onDelete != null) {
-                    TextButton(onClick = onDelete) { Text("Usuń", color = MaterialTheme.colorScheme.error) }
-                }
-                TextButton(onClick = onDismiss) { Text("Anuluj") }
-            }
-        }
-    )
-}
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
 

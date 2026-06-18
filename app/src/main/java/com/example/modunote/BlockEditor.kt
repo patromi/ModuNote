@@ -303,7 +303,7 @@ fun shareNote(context: Context, noteTitle: String, blocks: List<Block>) {
     context.startActivity(chooser)
 }
 
-// â”€â”€â”€ BLOCK EDITOR SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  BLOCK EDITOR SCREEN
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

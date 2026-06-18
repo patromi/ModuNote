@@ -507,6 +507,7 @@ fun BlockEditorScreen(
                             if (block.type == BlockType.MAP) {
                                 MapBlock(
                                     block = block,
+                                    isFocused = isFocused,
                                     onLocationChange = { lat, lon ->
                                         updateBlock(block.id) { it.copy(latitude = lat, longitude = lon) }
                                     }
@@ -802,6 +803,7 @@ fun ReminderDialogBlock(
 @Composable
 fun MapBlock(
     block: Block,
+    isFocused: Boolean,
     onLocationChange: (Double, Double) -> Unit
 ) {
     val context = LocalContext.current
@@ -818,52 +820,53 @@ fun MapBlock(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
-        // Search bar
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Szukaj lokalizacji...", fontSize = 13.sp) },
-            trailingIcon = {
-                if (isSearching) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    IconButton(onClick = {
-                        if (query.isNotBlank()) {
-                            isSearching = true
-                            scope.launch(Dispatchers.IO) {
-                                try {
-                                    val url = URL("https://nominatim.openstreetmap.org/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}&format=json&limit=1")
-                                    val conn = url.openConnection() as HttpURLConnection
-                                    conn.setRequestProperty("User-Agent", "ModuNote-App")
-                                    val response = conn.inputStream.bufferedReader().readText()
-                                    val json = com.google.gson.JsonParser.parseString(response).asJsonArray
-                                    if (json.size() > 0) {
-                                        val first = json.get(0).asJsonObject
-                                        val lat = first.get("lat").asDouble
-                                        val lon = first.get("lon").asDouble
-                                        withContext(Dispatchers.Main) {
-                                            onLocationChange(lat, lon)
+        // Search bar - only visible when focused
+        AnimatedVisibility(visible = isFocused) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                placeholder = { Text("Wpisz adres (np. Warszawa, ul. Nowa 1)...", fontSize = 13.sp) },
+                trailingIcon = {
+                    if (isSearching) {
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        IconButton(onClick = {
+                            if (query.isNotBlank()) {
+                                isSearching = true
+                                scope.launch(Dispatchers.IO) {
+                                    try {
+                                        val url = URL("https://nominatim.openstreetmap.org/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}&format=json&limit=1")
+                                        val conn = url.openConnection() as HttpURLConnection
+                                        conn.setRequestProperty("User-Agent", "ModuNote-App")
+                                        val response = conn.inputStream.bufferedReader().readText()
+                                        val json = com.google.gson.JsonParser.parseString(response).asJsonArray
+                                        if (json.size() > 0) {
+                                            val first = json.get(0).asJsonObject
+                                            val lat = first.get("lat").asDouble
+                                            val lon = first.get("lon").asDouble
+                                            withContext(Dispatchers.Main) {
+                                                onLocationChange(lat, lon)
+                                                query = "" // Clear after search
+                                            }
                                         }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    } finally {
+                                        isSearching = false
                                     }
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                } finally {
-                                    isSearching = false
                                 }
                             }
+                        }) {
+                            Icon(Icons.Default.Search, null, Modifier.size(18.dp))
                         }
-                    }) {
-                        Icon(Icons.Default.Search, null, Modifier.size(18.dp))
                     }
-                }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            textStyle = TextStyle(fontSize = 14.sp)
-        )
-
-        Spacer(Modifier.height(8.dp))
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                textStyle = TextStyle(fontSize = 14.sp)
+            )
+        }
 
         // Map View
         Box(
@@ -878,6 +881,14 @@ fun MapBlock(
                     MapView(ctx).apply {
                         setTileSource(TileSourceFactory.MAPNIK)
                         setMultiTouchControls(true)
+                        setBuiltInZoomControls(false) // Remove +/- buttons
+                        zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
+                        
+                        // Disable panning/scrolling, allow only pinch-to-zoom
+                        setScrollableAreaLimitDouble(org.osmdroid.util.BoundingBox(85.0, 180.0, -85.0, -180.0)) // limit if needed
+                        isVerticalMapRepetitionEnabled = false
+                        isHorizontalMapRepetitionEnabled = false
+                        
                         controller.setZoom(15.0)
                         controller.setCenter(geoPoint)
 
@@ -885,16 +896,6 @@ fun MapBlock(
                         val matrix = android.graphics.ColorMatrix().apply { setSaturation(0f) }
                         val filter = android.graphics.ColorMatrixColorFilter(matrix)
                         overlayManager.tilesOverlay.setColorFilter(filter)
-
-                        // Click to set location
-                        val eventsReceiver = object : MapEventsReceiver {
-                            override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
-                                onLocationChange(p.latitude, p.longitude)
-                                return true
-                            }
-                            override fun longPressHelper(p: GeoPoint): Boolean = false
-                        }
-                        overlays.add(MapEventsOverlay(eventsReceiver))
                     }
                 },
                 update = { view ->
@@ -905,6 +906,8 @@ fun MapBlock(
                         setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                         icon = ContextCompat.getDrawable(context, org.osmdroid.library.R.drawable.marker_default)
                         icon?.setTint(android.graphics.Color.parseColor("#6650A4"))
+                        // Disable marker dragging/interaction
+                        setOnMarkerClickListener { _, _ -> true }
                     }
                     view.overlays.add(marker)
                     view.invalidate()

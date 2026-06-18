@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/app/src/main/res/drawable/ic_launcher_foreground.xml">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/app/src/main/res/drawable/ic_launcher_foreground.xml" />
+              <option name="originalContent" value="&lt;vector xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;&#10;    xmlns:aapt=&quot;http://schemas.android.com/aapt&quot;&#10;    android:width=&quot;108dp&quot;&#10;    android:height=&quot;108dp&quot;&#10;    android:viewportWidth=&quot;108&quot;&#10;    android:viewportHeight=&quot;108&quot;&gt;&#10;    &lt;path android:pathData=&quot;M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z&quot;&gt;&#10;        &lt;aapt:attr name=&quot;android:fillColor&quot;&gt;&#10;            &lt;gradient&#10;                android:endX=&quot;85.84757&quot;&#10;                android:endY=&quot;92.4963&quot;&#10;                android:startX=&quot;42.9492&quot;&#10;                android:startY=&quot;49.59793&quot;&#10;                android:type=&quot;linear&quot;&gt;&#10;                &lt;item&#10;                    android:color=&quot;#44000000&quot;&#10;                    android:offset=&quot;0.0&quot; /&gt;&#10;                &lt;item&#10;                    android:color=&quot;#00000000&quot;&#10;                    android:offset=&quot;1.0&quot; /&gt;&#10;            &lt;/gradient&gt;&#10;        &lt;/aapt:attr&gt;&#10;    &lt;/path&gt;&#10;    &lt;path&#10;        android:fillColor=&quot;#FFFFFF&quot;&#10;        android:fillType=&quot;nonZero&quot;&#10;        android:pathData=&quot;M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z&quot;&#10;        android:strokeWidth=&quot;1&quot;&#10;        android:strokeColor=&quot;#00000000&quot; /&gt;&#10;&lt;/vector&gt;&#10;" />
+              <option name="updatedContent" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&#10;&lt;layer-list xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;&gt;&#10;    &lt;item&#10;        android:drawable=&quot;@drawable/logo&quot;&#10;        android:gravity=&quot;center&quot;&#10;        android:width=&quot;60dp&quot;&#10;        android:height=&quot;60dp&quot; /&gt;&#10;&lt;/layer-list&gt;&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" />
+              <option name="originalContent" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&#10;&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;&gt;&#10;    &lt;background android:drawable=&quot;@drawable/ic_launcher_background&quot; /&gt;&#10;    &lt;foreground android:drawable=&quot;@drawable/ic_launcher_foreground&quot; /&gt;&#10;    &lt;monochrome android:drawable=&quot;@drawable/ic_launcher_foreground&quot; /&gt;&#10;&lt;/adaptive-icon&gt;" />
+              <option name="updatedContent" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&#10;&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;&gt;&#10;    &lt;background android:drawable=&quot;@color/ic_launcher_bg&quot; /&gt;&#10;    &lt;foreground android:drawable=&quot;@drawable/logo&quot; /&gt;&#10;    &lt;monochrome android:drawable=&quot;@drawable/logo&quot; /&gt;&#10;&lt;/adaptive-icon&gt;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml" />
+              <option name="updatedContent" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&#10;&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;&gt;&#10;    &lt;background android:drawable=&quot;@color/ic_launcher_bg&quot; /&gt;&#10;    &lt;foreground android:drawable=&quot;@drawable/logo&quot; /&gt;&#10;    &lt;monochrome android:drawable=&quot;@drawable/logo&quot; /&gt;&#10;&lt;/adaptive-icon&gt;&#10;&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/app/src/main/res/values/ic_launcher_bg.xml">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/app/src/main/res/values/ic_launcher_bg.xml" />
+              <option name="updatedContent" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&#10;&lt;resources&gt;&#10;    &lt;color name=&quot;ic_launcher_bg&quot;&gt;@android:color/transparent&lt;/color&gt;&#10;&lt;/resources&gt;&#10;&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/local.properties">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/local.properties" />
+              <option name="updatedContent" value="## This file is automatically generated by Android Studio.&#10;# Do not modify this file -- YOUR CHANGES WILL BE ERASED!&#10;#&#10;# This file must *NOT* be checked into Version Control Systems,&#10;# as it contains information specific to your local configuration.&#10;#&#10;# Location of the SDK. This is only used by Gradle.&#10;# For customization when using a Version Control System, please read the&#10;# header note.&#10;sdk.dir=C:/Users/admin/AppData/Local/Android/Sdk&#10;&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

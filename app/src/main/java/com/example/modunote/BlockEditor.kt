@@ -190,7 +190,8 @@ fun BlockEditorScreen(
     noteTemplateViewModel: NoteTemplateViewModel,
     tagViewModel: TagViewModel,
     onBack: () -> Unit,
-    onNavigateTo: (Int) -> Unit = {}
+    onNavigateTo: (Int) -> Unit = {},
+    onNavigateToHome: () -> Unit = {}
 ) {
     val note by noteViewModel.getNoteById(noteId).collectAsState(initial = null)
     val subNotes by noteViewModel.getNotesByParent(noteId).collectAsState(initial = emptyList())
@@ -474,7 +475,7 @@ fun BlockEditorScreen(
                                                 if (parentId != null) {
                                                     onNavigateTo(parentId)
                                                 } else {
-                                                    Toast.makeText(context, "Brak notatki nadrzędnej", Toast.LENGTH_SHORT).show()
+                                                    onNavigateToHome()
                                                 }
                                             }
                                         }

@@ -129,7 +129,8 @@ class MainActivity : FragmentActivity() {
                             noteTemplateViewModel = noteTemplateViewModel,
                             tagViewModel = tagViewModel,
                             onBack = { navController.popBackStack() },
-                            onNavigateTo = { id -> navController.navigate("editor/$id") }
+                            onNavigateTo = { id -> navController.navigate("editor/$id") },
+                            onNavigateToHome = { navController.popBackStack("home", false) }
                         )
                     }
                     composable("chat") {

@@ -6,8 +6,12 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.biometric.BiometricPrompt
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -114,7 +118,38 @@ class MainActivity : FragmentActivity() {
                 val calendarViewModel: CalendarEventViewModel = viewModel()
                 val noteTemplateViewModel: NoteTemplateViewModel = viewModel()
                 val tagViewModel: TagViewModel = viewModel()
-                NavHost(navController = navController, startDestination = "home") {
+                NavHost(
+                    navController = navController,
+                    startDestination = "home",
+                    enterTransition = {
+                        if (targetState.destination.route?.startsWith("editor") == true) {
+                            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(300))
+                        } else {
+                            fadeIn(animationSpec = tween(300))
+                        }
+                    },
+                    exitTransition = {
+                        if (targetState.destination.route?.startsWith("editor") == true) {
+                            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(300))
+                        } else {
+                            fadeOut(animationSpec = tween(300))
+                        }
+                    },
+                    popEnterTransition = {
+                        if (initialState.destination.route?.startsWith("editor") == true) {
+                            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(300))
+                        } else {
+                            fadeIn(animationSpec = tween(300))
+                        }
+                    },
+                    popExitTransition = {
+                        if (initialState.destination.route?.startsWith("editor") == true) {
+                            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(300))
+                        } else {
+                            fadeOut(animationSpec = tween(300))
+                        }
+                    }
+                ) {
                     composable("home") {
                         HomeScreen(noteViewModel, tagViewModel, navController)
                     }
@@ -432,6 +467,7 @@ fun HomeScreen(
                     SwipeToDismissBox(
                         state = dismissState,
                         gesturesEnabled = draggedItemIndex == -1,
+                        modifier = Modifier.animateItem(),
                         backgroundContent = {
                             val bgColor by animateColorAsState(
                                 targetValue = when (dismissState.targetValue) {

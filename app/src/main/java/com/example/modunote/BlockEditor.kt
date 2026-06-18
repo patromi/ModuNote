@@ -4,8 +4,10 @@ import android.content.Context
 import android.widget.Toast
 import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -564,53 +566,59 @@ fun BlockEditorScreen(
                             }
                         }
 
-                        if (subNotesExpanded) {
-                            if (subNotes.isEmpty()) {
-                                Text(
-                                    text = "Brak podstron. Kliknij 'Dodaj', aby utworzyć nową.",
-                                    fontSize = 12.sp,
-                                    color = md_theme_light_onSurfaceVariant.copy(alpha = 0.6f),
-                                    fontStyle = FontStyle.Italic,
-                                    modifier = Modifier.padding(top = 4.dp, start = 22.dp)
-                                )
-                            } else {
-                                Spacer(Modifier.height(4.dp))
-                                val chunkedSubNotes = remember(subNotes) { subNotes.chunked(2) }
-                                Column(
-                                    modifier = Modifier.padding(start = 22.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    chunkedSubNotes.forEach { rowItems ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                        ) {
-                                            rowItems.forEach { subNote ->
-                                                Row(
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .clickable { onNavigateTo(subNote.id) }
-                                                        .padding(vertical = 6.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Description,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(14.dp),
-                                                        tint = md_theme_light_onSurfaceVariant.copy(alpha = 0.7f)
-                                                    )
-                                                    Spacer(Modifier.width(6.dp))
-                                                    Text(
-                                                        text = subNote.title.ifBlank { "Bez tytułu" },
-                                                        fontSize = 13.sp,
-                                                        color = md_theme_light_onSurfaceVariant,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
-                                                    )
+                        AnimatedVisibility(
+                            visible = subNotesExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column {
+                                if (subNotes.isEmpty()) {
+                                    Text(
+                                        text = "Brak podstron. Kliknij 'Dodaj', aby utworzyć nową.",
+                                        fontSize = 12.sp,
+                                        color = md_theme_light_onSurfaceVariant.copy(alpha = 0.6f),
+                                        fontStyle = FontStyle.Italic,
+                                        modifier = Modifier.padding(top = 4.dp, start = 22.dp)
+                                    )
+                                } else {
+                                    Spacer(Modifier.height(4.dp))
+                                    val chunkedSubNotes = remember(subNotes) { subNotes.chunked(2) }
+                                    Column(
+                                        modifier = Modifier.padding(start = 22.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        chunkedSubNotes.forEach { rowItems ->
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                rowItems.forEach { subNote ->
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .clickable { onNavigateTo(subNote.id) }
+                                                            .padding(vertical = 6.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Description,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(14.dp),
+                                                            tint = md_theme_light_onSurfaceVariant.copy(alpha = 0.7f)
+                                                        )
+                                                        Spacer(Modifier.width(6.dp))
+                                                        Text(
+                                                            text = subNote.title.ifBlank { "Bez tytułu" },
+                                                            fontSize = 13.sp,
+                                                            color = md_theme_light_onSurfaceVariant,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis
+                                                        )
+                                                    }
                                                 }
-                                            }
-                                            if (rowItems.size < 2) {
-                                                Spacer(modifier = Modifier.weight(1f))
+                                                if (rowItems.size < 2) {
+                                                    Spacer(modifier = Modifier.weight(1f))
+                                                }
                                             }
                                         }
                                     }

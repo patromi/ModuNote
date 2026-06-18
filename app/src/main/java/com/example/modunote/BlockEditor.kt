@@ -458,75 +458,114 @@ fun BlockEditorScreen(
                                 tonalElevation = 4.dp,
                                 shadowElevation = 12.dp
                             ) {
-                                Spacer(Modifier.height(4.dp))
-                                // ── Przypomnienie ──────────────────────────
-                                AnimatedVisibility(visible = itemsVisible[0].value, enter = fadeIn(tween(180)) + slideInVertically(tween(200)) { -14 }) {
-                                    DropdownMenuItem(
-                                        leadingIcon = {
-                                            Icon(Icons.Default.Alarm, null,
-                                                tint = if (note?.reminderEnabled == true) md_theme_link_color else md_theme_light_onSurfaceVariant)
-                                        },
-                                        text = { Text(if (note?.reminderEnabled == true) "Edytuj przypomnienie" else "Dodaj przypomnienie") },
-                                        onClick = { showMenu = false; showReminderDialog = true }
-                                    )
-                                }
-                                // ── Szablon ────────────────────────────────
-                                AnimatedVisibility(visible = itemsVisible[1].value, enter = fadeIn(tween(180)) + slideInVertically(tween(200)) { -14 }) {
-                                    DropdownMenuItem(
-                                        leadingIcon = { Icon(Icons.Default.ContentCopy, null, tint = md_theme_light_onSurfaceVariant) },
-                                        text = { Text("Zapisz jako szablon") },
-                                        onClick = { showMenu = false; showTemplateDialog = true }
-                                    )
-                                }
                                 Spacer(Modifier.height(8.dp))
-                                // ── Blokada ────────────────────────────────
-                                AnimatedVisibility(visible = itemsVisible[2].value, enter = fadeIn(tween(180)) + slideInVertically(tween(200)) { -14 }) {
-                                    DropdownMenuItem(
-                                        leadingIcon = {
-                                            Icon(if (note?.isLocked == true) Icons.Default.Lock else Icons.Default.LockOpen, null,
-                                                tint = if (note?.isLocked == true) md_theme_link_color else md_theme_light_onSurfaceVariant)
-                                        },
-                                        text = { Text(if (note?.isLocked == true) "Odblokuj notatkę" else "Zablokuj notatkę") },
-                                        onClick = {
-                                            showMenu = false
-                                            note?.let { n ->
-                                                val json = BlockSerializer.toJson(blocks)
-                                                val newLocked = !n.isLocked
-                                                val toSave = if (newLocked) "ENC:${runCatching { CryptoManager.encrypt(json) }.getOrElse { json }}" else json
-                                                noteViewModel.updateNoteWithTags(n.copy(isLocked = newLocked, content = toSave, title = title))
-                                                if (newLocked) noteViewModel.markAuthenticated(n.id)
-                                                lastSavedJson = json; lastSavedTitle = title
+
+                                // ═══ Grupa 1: Przypomnienie + Szablon ═══════
+                                AnimatedVisibility(
+                                    visible = itemsVisible[0].value || itemsVisible[1].value,
+                                    enter = fadeIn(tween(160)) + slideInVertically(tween(220)) { -20 }
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(16.dp),
+                                        tonalElevation = 8.dp,
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    ) {
+                                        Column {
+                                            AnimatedVisibility(visible = itemsVisible[0].value, enter = fadeIn(tween(180)) + slideInVertically(tween(200)) { -10 }) {
+                                                DropdownMenuItem(
+                                                    leadingIcon = {
+                                                        Icon(Icons.Default.Alarm, null,
+                                                            tint = if (note?.reminderEnabled == true) md_theme_link_color else md_theme_light_onSurfaceVariant)
+                                                    },
+                                                    text = { Text(if (note?.reminderEnabled == true) "Edytuj przypomnienie" else "Dodaj przypomnienie") },
+                                                    onClick = { showMenu = false; showReminderDialog = true }
+                                                )
+                                            }
+                                            AnimatedVisibility(visible = itemsVisible[1].value, enter = fadeIn(tween(180)) + slideInVertically(tween(200)) { -10 }) {
+                                                DropdownMenuItem(
+                                                    leadingIcon = { Icon(Icons.Default.ContentCopy, null, tint = md_theme_light_onSurfaceVariant) },
+                                                    text = { Text("Zapisz jako szablon") },
+                                                    onClick = { showMenu = false; showTemplateDialog = true }
+                                                )
                                             }
                                         }
-                                    )
+                                    }
                                 }
-                                // ── Przypinanie ────────────────────────────
-                                AnimatedVisibility(visible = itemsVisible[3].value, enter = fadeIn(tween(180)) + slideInVertically(tween(200)) { -14 }) {
-                                    DropdownMenuItem(
-                                        leadingIcon = {
-                                            Icon(Icons.Default.PushPin, null,
-                                                tint = if (note?.isPinned == true) md_theme_link_color else md_theme_light_onSurfaceVariant)
-                                        },
-                                        text = { Text(if (note?.isPinned == true) "Odepnij notatkę" else "Przypnij notatkę") },
-                                        onClick = {
-                                            showMenu = false
-                                            note?.let { noteViewModel.updateNoteWithTags(it.copy(isPinned = !it.isPinned)) }
-                                        }
-                                    )
-                                }
+
                                 Spacer(Modifier.height(8.dp))
-                                // ── Drukowanie ─────────────────────────────
-                                AnimatedVisibility(visible = itemsVisible[4].value, enter = fadeIn(tween(180)) + slideInVertically(tween(200)) { -14 }) {
-                                    DropdownMenuItem(
-                                        leadingIcon = { Icon(Icons.Default.Print, null, tint = md_theme_light_onSurfaceVariant) },
-                                        text = { Text("Drukuj notatkę") },
-                                        onClick = {
-                                            showMenu = false
-                                            printNote(context, title.ifBlank { "Notatka" }, blocks)
+
+                                // ═══ Grupa 2: Blokada + Przypinanie ═════════
+                                AnimatedVisibility(
+                                    visible = itemsVisible[2].value || itemsVisible[3].value,
+                                    enter = fadeIn(tween(160)) + slideInVertically(tween(220)) { -20 }
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(16.dp),
+                                        tonalElevation = 8.dp,
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    ) {
+                                        Column {
+                                            AnimatedVisibility(visible = itemsVisible[2].value, enter = fadeIn(tween(180)) + slideInVertically(tween(200)) { -10 }) {
+                                                DropdownMenuItem(
+                                                    leadingIcon = {
+                                                        Icon(if (note?.isLocked == true) Icons.Default.Lock else Icons.Default.LockOpen, null,
+                                                            tint = if (note?.isLocked == true) md_theme_link_color else md_theme_light_onSurfaceVariant)
+                                                    },
+                                                    text = { Text(if (note?.isLocked == true) "Odblokuj notatkę" else "Zablokuj notatkę") },
+                                                    onClick = {
+                                                        showMenu = false
+                                                        note?.let { n ->
+                                                            val json = BlockSerializer.toJson(blocks)
+                                                            val newLocked = !n.isLocked
+                                                            val toSave = if (newLocked) "ENC:${runCatching { CryptoManager.encrypt(json) }.getOrElse { json }}" else json
+                                                            noteViewModel.updateNoteWithTags(n.copy(isLocked = newLocked, content = toSave, title = title))
+                                                            if (newLocked) noteViewModel.markAuthenticated(n.id)
+                                                            lastSavedJson = json; lastSavedTitle = title
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                            AnimatedVisibility(visible = itemsVisible[3].value, enter = fadeIn(tween(180)) + slideInVertically(tween(200)) { -10 }) {
+                                                DropdownMenuItem(
+                                                    leadingIcon = {
+                                                        Icon(Icons.Default.PushPin, null,
+                                                            tint = if (note?.isPinned == true) md_theme_link_color else md_theme_light_onSurfaceVariant)
+                                                    },
+                                                    text = { Text(if (note?.isPinned == true) "Odepnij notatkę" else "Przypnij notatkę") },
+                                                    onClick = {
+                                                        showMenu = false
+                                                        note?.let { noteViewModel.updateNoteWithTags(it.copy(isPinned = !it.isPinned)) }
+                                                    }
+                                                )
+                                            }
                                         }
-                                    )
+                                    }
                                 }
-                                Spacer(Modifier.height(4.dp))
+
+                                Spacer(Modifier.height(8.dp))
+
+                                // ═══ Grupa 3: Drukowanie ════════════════════
+                                AnimatedVisibility(
+                                    visible = itemsVisible[4].value,
+                                    enter = fadeIn(tween(160)) + slideInVertically(tween(220)) { -20 }
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(16.dp),
+                                        tonalElevation = 8.dp,
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    ) {
+                                        DropdownMenuItem(
+                                            leadingIcon = { Icon(Icons.Default.Print, null, tint = md_theme_light_onSurfaceVariant) },
+                                            text = { Text("Drukuj notatkę") },
+                                            onClick = {
+                                                showMenu = false
+                                                printNote(context, title.ifBlank { "Notatka" }, blocks)
+                                            }
+                                        )
+                                    }
+                                }
+
+                                Spacer(Modifier.height(8.dp))
                             }
                         }
                     },

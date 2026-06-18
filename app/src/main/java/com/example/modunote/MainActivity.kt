@@ -1,9 +1,10 @@
-package com.example.modunote
+﻿package com.example.modunote
 
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.activity.enableEdgeToEdge
 import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -125,9 +126,25 @@ val md_theme_link_color: Color
     get() = MaterialTheme.colorScheme.primary
 
 
+val LocalEnergySavingActive = compositionLocalOf { false }
+
 class MainActivity : FragmentActivity() {
+    private var isBatterySaverActive by mutableStateOf(false)
+    private var powerSaveReceiver: android.content.BroadcastReceiver? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        isBatterySaverActive = powerManager.isPowerSaveMode
+
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: android.content.Intent) {
+                isBatterySaverActive = powerManager.isPowerSaveMode
+            }
+        }
+        registerReceiver(receiver, android.content.IntentFilter(android.os.PowerManager.ACTION_POWER_SAVE_MODE_CHANGED))
+        powerSaveReceiver = receiver
+
         Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
         enableEdgeToEdge()
 
@@ -140,7 +157,11 @@ class MainActivity : FragmentActivity() {
         ReminderScheduler.createChannel(this)
 
         setContent {
-            ModuNoteTheme {
+            CompositionLocalProvider(LocalEnergySavingActive provides isBatterySaverActive) {
+                ModuNoteTheme(
+                    darkTheme = isSystemInDarkTheme() || isBatterySaverActive,
+                    amoledMode = isBatterySaverActive
+                ) {
                 val navController = rememberNavController()
                 val noteViewModel: NoteViewModel = viewModel()
                 val calendarViewModel: CalendarEventViewModel = viewModel()
@@ -218,6 +239,12 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+}
+
+    override fun onDestroy() {
+        super.onDestroy()
+        powerSaveReceiver?.let { unregisterReceiver(it) }
     }
 }
 

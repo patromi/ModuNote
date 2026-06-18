@@ -324,6 +324,7 @@ fun BlockEditorScreen(
     val context = LocalContext.current
     val activity = context as FragmentActivity
     val scope = rememberCoroutineScope()
+    val energySaving = LocalEnergySavingActive.current
 
     // Editor state
     var title by remember { mutableStateOf("") }
@@ -374,8 +375,9 @@ fun BlockEditorScreen(
 
     // Auto-save
     val blocksSnapshot = blocks
-    LaunchedEffect(title, blocksSnapshot) {
-        delay(800)
+    LaunchedEffect(title, blocksSnapshot, energySaving) {
+        val saveDelay = if (energySaving) 4000L else 800L
+        delay(saveDelay)
         note?.let { n ->
             val json = BlockSerializer.toJson(blocksSnapshot)
             if (title == lastSavedTitle && json == lastSavedJson) return@let

@@ -89,13 +89,41 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 
-val md_theme_light_background = Color(0xFFFEF7FF)
-val md_theme_light_onSurface = Color(0xFF1D1B20)
-val md_theme_light_onSurfaceVariant = Color(0xFF49454F)
-val md_theme_light_surfaceContainerHigh = Color(0xFFECE6F0)
-val md_theme_light_primaryContainer = Color(0xFFEADDFF)
-val md_theme_light_onPrimaryContainer = Color(0xFF4F378A)
-val md_theme_link_color = Color(0xFF6650A4)
+val md_theme_light_background: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = MaterialTheme.colorScheme.background
+
+val md_theme_light_onSurface: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = MaterialTheme.colorScheme.onSurface
+
+val md_theme_light_onSurfaceVariant: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = MaterialTheme.colorScheme.onSurfaceVariant
+
+val md_theme_light_surfaceContainerHigh: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = MaterialTheme.colorScheme.surfaceContainerHigh
+
+val md_theme_light_primaryContainer: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = MaterialTheme.colorScheme.primaryContainer
+
+val md_theme_light_onPrimaryContainer: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = MaterialTheme.colorScheme.onPrimaryContainer
+
+val md_theme_link_color: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = MaterialTheme.colorScheme.primary
+
 
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -839,7 +867,7 @@ fun MarkdownPreview(
 @Suppress("DEPRECATION")
 @Composable
 fun RichInlineText(text: String, onBacklinkClick: (String) -> Unit) {
-    val annotated = buildRichAnnotatedString(text)
+    val annotated = buildRichAnnotatedString(text, md_theme_link_color)
     ClickableText(
         text = annotated,
         style = LocalTextStyle.current,
@@ -850,7 +878,7 @@ fun RichInlineText(text: String, onBacklinkClick: (String) -> Unit) {
     )
 }
 
-fun buildRichAnnotatedString(text: String): AnnotatedString = buildAnnotatedString {
+fun buildRichAnnotatedString(text: String, linkColor: Color): AnnotatedString = buildAnnotatedString {
     val backlinkRegex = Regex("""\[\[(.+?)]]""")
     val boldRegex = Regex("""\*\*(.+?)\*\*""")
     val allMatches = (backlinkRegex.findAll(text) + boldRegex.findAll(text))
@@ -862,7 +890,7 @@ fun buildRichAnnotatedString(text: String): AnnotatedString = buildAnnotatedStri
         if (match.value.startsWith("[[")) {
             val title = match.groupValues[1]
             pushStringAnnotation("BACKLINK", title)
-            withStyle(SpanStyle(color = md_theme_link_color, textDecoration = TextDecoration.Underline)) {
+            withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
                 append(title)
             }
             pop()
@@ -875,6 +903,7 @@ fun buildRichAnnotatedString(text: String): AnnotatedString = buildAnnotatedStri
     }
     if (lastIndex <= text.lastIndex) append(text.substring(lastIndex))
 }
+
 
 // ─── NOTE EDITOR (legacy — replaced by BlockEditorScreen in BlockEditor.kt) ───
 

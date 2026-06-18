@@ -1,6 +1,9 @@
 package com.example.modunote
 
 import android.content.Context
+import android.print.PrintManager
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedVisibility
@@ -32,6 +35,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.*
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -182,6 +187,71 @@ val SLASH_COMMANDS = listOf(
     SlashCommand("mapa", "Mapa", "Lokalizacja na mapie", BlockType.MAP, { Icon(Icons.Default.Map, null, Modifier.size(18.dp)) }),
 )
 
+// ─── PRINT HELPERS ─────────────────────────────────────────────────────────────
+
+fun buildHtmlForPrint(noteTitle: String, blocks: List<Block>): String {
+    val body = StringBuilder()
+    for (block in blocks) {
+        when (block.type) {
+            BlockType.H1       -> body.append("<h1>${block.text.escapeHtml()}</h1>\n")
+            BlockType.H2       -> body.append("<h2>${block.text.escapeHtml()}</h2>\n")
+            BlockType.H3       -> body.append("<h3>${block.text.escapeHtml()}</h3>\n")
+            BlockType.BULLET   -> body.append("<ul><li>${block.text.escapeHtml()}</li></ul>\n")
+            BlockType.NUMBERED -> body.append("<ol><li>${block.text.escapeHtml()}</li></ol>\n")
+            BlockType.TODO     -> {
+                val check = if (block.checked) "&#9746;" else "&#9744;"
+                body.append("<p>$check&nbsp;${block.text.escapeHtml()}</p>\n")
+            }
+            BlockType.QUOTE    -> body.append("<blockquote>${block.text.escapeHtml()}</blockquote>\n")
+            BlockType.CODE     -> body.append("<pre><code>${block.text.escapeHtml()}</code></pre>\n")
+            BlockType.DIVIDER  -> body.append("<hr/>\n")
+            BlockType.MAP      -> body.append("<p><em>[Mapa: ${block.address ?: "${block.latitude}, ${block.longitude}"}]</em></p>\n")
+            else               -> body.append("<p>${block.text.escapeHtml()}</p>\n")
+        }
+    }
+    return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <style>
+                body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; margin: 32px; color: #191c20; line-height: 1.6; }
+                h1 { font-size: 26px; margin-bottom: 8px; }
+                h2 { font-size: 20px; margin-bottom: 6px; }
+                h3 { font-size: 16px; margin-bottom: 4px; }
+                blockquote { border-left: 4px solid #00639A; margin: 0; padding-left: 16px; color: #43474e; font-style: italic; }
+                pre { background: #1a1a2e; color: #80cbc4; padding: 12px; border-radius: 6px; overflow-x: auto; }
+                hr { border: none; border-top: 1px solid #e0e2ec; margin: 16px 0; }
+                ul, ol { padding-left: 24px; }
+            </style>
+        </head>
+        <body>
+            <h1>${noteTitle.escapeHtml()}</h1>
+            <hr/>
+            $body
+        </body>
+        </html>
+    """.trimIndent()
+}
+
+private fun String.escapeHtml(): String =
+    replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+
+fun printNote(context: Context, noteTitle: String, blocks: List<Block>) {
+    val html = buildHtmlForPrint(noteTitle, blocks)
+    val webView = WebView(context)
+    webView.webViewClient = object : WebViewClient() {
+        override fun onPageFinished(view: WebView, url: String) {
+            val printManager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
+            val jobName = "ModuNote – $noteTitle"
+            val adapter = view.createPrintDocumentAdapter(jobName)
+            printManager.print(jobName, adapter, null)
+        }
+    }
+    webView.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
+}
+
 // ─── BLOCK EDITOR SCREEN ───────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -227,9 +297,10 @@ fun BlockEditorScreen(
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
     var dropIndex by remember { mutableIntStateOf(-1) }
 
-    // Dialogs
+    // Dialogs & Menu
     var showReminderDialog by remember { mutableStateOf(false) }
     var showTemplateDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     val timeFmt = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale("pl")) }
 
     // Init from note
@@ -365,29 +436,81 @@ fun BlockEditorScreen(
                         IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Wstecz") }
                     },
                     actions = {
-                        IconButton(onClick = { showReminderDialog = true }) {
-                            Icon(Icons.Default.Alarm, null,
-                                tint = if (note?.reminderEnabled == true) md_theme_link_color else md_theme_light_onSurfaceVariant)
-                        }
-                        IconButton(onClick = { showTemplateDialog = true }) {
-                            Icon(Icons.Default.ContentCopy, null, tint = md_theme_light_onSurfaceVariant)
-                        }
-                        IconButton(onClick = {
-                            note?.let { n ->
-                                val json = BlockSerializer.toJson(blocks)
-                                val newLocked = !n.isLocked
-                                val toSave = if (newLocked) "ENC:${runCatching { CryptoManager.encrypt(json) }.getOrElse { json }}" else json
-                                noteViewModel.updateNoteWithTags(n.copy(isLocked = newLocked, content = toSave, title = title))
-                                if (newLocked) noteViewModel.markAuthenticated(n.id)
-                                lastSavedJson = json; lastSavedTitle = title
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, "Więcej opcji", tint = md_theme_light_onSurfaceVariant)
                             }
-                        }) {
-                            Icon(if (note?.isLocked == true) Icons.Default.Lock else Icons.Default.LockOpen, null,
-                                tint = if (note?.isLocked == true) md_theme_light_onPrimaryContainer else md_theme_light_onSurfaceVariant)
-                        }
-                        IconButton(onClick = { note?.let { noteViewModel.updateNoteWithTags(it.copy(isPinned = !it.isPinned)) } }) {
-                            Icon(Icons.Default.PushPin, null,
-                                tint = if (note?.isPinned == true) md_theme_light_onPrimaryContainer else md_theme_light_onSurfaceVariant)
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }
+                            ) {
+                                // ── Przypomnienie ──────────────────────────
+                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Alarm,
+                                            null,
+                                            tint = if (note?.reminderEnabled == true) md_theme_link_color else md_theme_light_onSurfaceVariant
+                                        )
+                                    },
+                                    text = { Text(if (note?.reminderEnabled == true) "Edytuj przypomnienie" else "Dodaj przypomnienie") },
+                                    onClick = { showMenu = false; showReminderDialog = true }
+                                )
+                                // ── Szablon ────────────────────────────────
+                                DropdownMenuItem(
+                                    leadingIcon = { Icon(Icons.Default.ContentCopy, null, tint = md_theme_light_onSurfaceVariant) },
+                                    text = { Text("Zapisz jako szablon") },
+                                    onClick = { showMenu = false; showTemplateDialog = true }
+                                )
+                                HorizontalDivider()
+                                // ── Blokada ────────────────────────────────
+                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            if (note?.isLocked == true) Icons.Default.Lock else Icons.Default.LockOpen,
+                                            null,
+                                            tint = if (note?.isLocked == true) md_theme_link_color else md_theme_light_onSurfaceVariant
+                                        )
+                                    },
+                                    text = { Text(if (note?.isLocked == true) "Odblokuj notatkę" else "Zablokuj notatkę") },
+                                    onClick = {
+                                        showMenu = false
+                                        note?.let { n ->
+                                            val json = BlockSerializer.toJson(blocks)
+                                            val newLocked = !n.isLocked
+                                            val toSave = if (newLocked) "ENC:${runCatching { CryptoManager.encrypt(json) }.getOrElse { json }}" else json
+                                            noteViewModel.updateNoteWithTags(n.copy(isLocked = newLocked, content = toSave, title = title))
+                                            if (newLocked) noteViewModel.markAuthenticated(n.id)
+                                            lastSavedJson = json; lastSavedTitle = title
+                                        }
+                                    }
+                                )
+                                // ── Przypinanie ────────────────────────────
+                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.PushPin,
+                                            null,
+                                            tint = if (note?.isPinned == true) md_theme_link_color else md_theme_light_onSurfaceVariant
+                                        )
+                                    },
+                                    text = { Text(if (note?.isPinned == true) "Odepnij notatkę" else "Przypnij notatkę") },
+                                    onClick = {
+                                        showMenu = false
+                                        note?.let { noteViewModel.updateNoteWithTags(it.copy(isPinned = !it.isPinned)) }
+                                    }
+                                )
+                                HorizontalDivider()
+                                // ── Drukowanie ─────────────────────────────
+                                DropdownMenuItem(
+                                    leadingIcon = { Icon(Icons.Default.Print, null, tint = md_theme_light_onSurfaceVariant) },
+                                    text = { Text("Drukuj notatkę") },
+                                    onClick = {
+                                        showMenu = false
+                                        printNote(context, title.ifBlank { "Notatka" }, blocks)
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = md_theme_light_background)

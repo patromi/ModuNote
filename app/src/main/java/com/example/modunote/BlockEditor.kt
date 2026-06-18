@@ -130,7 +130,7 @@ object BlockSerializer {
         }
         val blocks = parse(content)
         return blocks
-            .filter { it.type != BlockType.DIVIDER && it.type != BlockType.MAP }
+            .filter { it.type != BlockType.DIVIDER && it.type != BlockType.MAP && it.type != BlockType.LINK }
             .joinToString(" ") { it.text }
             .replace(Regex("\\*\\*|\\[\\[|]]|#[\\wÀ-ɏ/]+"), "")
             .trim()
@@ -187,6 +187,7 @@ val SLASH_COMMANDS = listOf(
     SlashCommand("podzial", "Linia", "Poziomy separator", BlockType.DIVIDER, { Icon(Icons.Default.HorizontalRule, null, Modifier.size(18.dp)) }),
     SlashCommand("kod", "Kod", "Blok kodu z monospace", BlockType.CODE, { Icon(Icons.Default.Code, null, Modifier.size(18.dp)) }),
     SlashCommand("mapa", "Mapa", "Lokalizacja na mapie", BlockType.MAP, { Icon(Icons.Default.Map, null, Modifier.size(18.dp)) }),
+    SlashCommand("link", "Link URL", "Otwiera stronę w aplikacji", BlockType.LINK, { Icon(Icons.Default.Link, null, Modifier.size(18.dp)) }),
 )
 
 // ─── PRINT HELPERS ─────────────────────────────────────────────────────────────
@@ -208,6 +209,7 @@ fun buildHtmlForPrint(noteTitle: String, blocks: List<Block>): String {
             BlockType.CODE     -> body.append("<pre><code>${block.text.escapeHtml()}</code></pre>\n")
             BlockType.DIVIDER  -> body.append("<hr/>\n")
             BlockType.MAP      -> body.append("<p><em>[Mapa: ${block.address ?: "${block.latitude}, ${block.longitude}"}]</em></p>\n")
+            BlockType.LINK     -> body.append("<p>🔗 <a href=\"${block.url.escapeHtml()}\">${block.text.ifBlank { block.url }.escapeHtml()}</a></p>\n")
             else               -> body.append("<p>${block.text.escapeHtml()}</p>\n")
         }
     }
@@ -366,7 +368,8 @@ fun BlockEditorScreen(
     fun convertBlock(id: String, type: BlockType) {
         updateBlock(id) { it.copy(
             type = type,
-            text = if (type == BlockType.DIVIDER || type == BlockType.MAP) "" else it.text,
+            text = if (type == BlockType.DIVIDER || type == BlockType.MAP || type == BlockType.LINK) "" else it.text,
+            url = "",
             latitude = if (type == BlockType.MAP) 52.2297 else null, // Default to Warsaw
             longitude = if (type == BlockType.MAP) 21.0122 else null
         ) }
@@ -828,6 +831,7 @@ fun BlockEditorScreen(
                                 showSlashMenu = slashBlockId == block.id,
                                 filteredSlash = filteredSlash,
                                 allNotes = allNotes,
+                                onUpdateBlock = { updatedBlock -> updateBlock(block.id) { updatedBlock } },
                                 onFocus = { focusedBlockId = block.id },
                                 onTextChange = { newText ->
                                     when {
@@ -922,6 +926,7 @@ fun BlockItem(
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
     onDragCancel: () -> Unit,
+    onUpdateBlock: (Block) -> Unit = {},
     onLocationChange: (Double, Double, String?) -> Unit = { _, _, _ -> },
     onMapTouch: (Boolean) -> Unit = {}
 ) {
@@ -945,13 +950,13 @@ fun BlockItem(
             .alpha(if (isDragging) 0.65f else 1f)
             .background(if (isDropTarget) md_theme_link_color.copy(alpha = 0.07f) else Color.Transparent)
             .padding(start = 8.dp, end = 12.dp),
-        verticalAlignment = if (block.type == BlockType.TODO || block.type == BlockType.MAP) Alignment.CenterVertically else Alignment.Top
+        verticalAlignment = if (block.type == BlockType.TODO || block.type == BlockType.MAP || block.type == BlockType.LINK) Alignment.CenterVertically else Alignment.Top
     ) {
         // Drag handle
         Box(
             modifier = Modifier
                 .width(28.dp)
-                .padding(top = if (block.type == BlockType.H1) 10.dp else if (block.type in listOf(BlockType.H2, BlockType.H3)) 6.dp else if (block.type == BlockType.MAP) 0.dp else 4.dp)
+                .padding(top = if (block.type == BlockType.H1) 10.dp else if (block.type in listOf(BlockType.H2, BlockType.H3)) 6.dp else if (block.type == BlockType.MAP || block.type == BlockType.LINK) 0.dp else 4.dp)
                 .pointerInput(block.id) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { _ -> onDragStart() },
@@ -988,7 +993,7 @@ fun BlockItem(
         }
         if (block.type == BlockType.QUOTE) Spacer(Modifier.width(10.dp))
 
-        // Text area or Map
+        // Text area, Map or Link
         if (block.type == BlockType.MAP) {
             MapBlock(
                 block = block,
@@ -996,6 +1001,227 @@ fun BlockItem(
                 onLocationChange = onLocationChange,
                 onMapTouch = onMapTouch
             )
+        } else if (block.type == BlockType.LINK) {
+            // â”€â”€ URL Link block â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            var showWebView by remember { mutableStateOf(false) }
+            var isEditing by remember { mutableStateOf(block.url.isBlank()) }
+
+            if (isEditing) {
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(vertical = 4.dp, horizontal = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Dodaj link URL",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        
+                        // URL input field
+                        OutlinedTextField(
+                            value = block.url,
+                            onValueChange = { newUrl -> 
+                                onUpdateBlock(block.copy(url = newUrl))
+                            },
+                            label = { Text("Adres URL") },
+                            placeholder = { Text("np. google.com") },
+                            singleLine = true,
+                            textStyle = TextStyle(fontSize = 14.sp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = md_theme_link_color,
+                                cursorColor = md_theme_link_color
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Done,
+                                keyboardType = KeyboardType.Uri
+                            ),
+                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                                onDone = {
+                                    if (block.url.isNotBlank()) {
+                                        val normalized = if (block.url.startsWith("http://") || block.url.startsWith("https://")) {
+                                            block.url
+                                        } else {
+                                            "https://${block.url}"
+                                        }
+                                        onUpdateBlock(block.copy(url = normalized))
+                                        isEditing = false
+                                    } else {
+                                        onDelete()
+                                    }
+                                }
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester)
+                                .onFocusChanged { if (it.isFocused) onFocus() }
+                                .onKeyEvent { event ->
+                                    if (event.key == Key.Backspace && event.type == KeyEventType.KeyDown && block.url.isEmpty()) {
+                                        onDelete()
+                                        true
+                                    } else false
+                                }
+                        )
+                        
+                        Spacer(Modifier.height(8.dp))
+                        
+                        // Label input field
+                        OutlinedTextField(
+                            value = block.text,
+                            onValueChange = { newLabel -> 
+                                onUpdateBlock(block.copy(text = newLabel))
+                            },
+                            label = { Text("Nazwa linku (opcjonalnie)") },
+                            placeholder = { Text("np. Wyszukiwarka Google") },
+                            singleLine = true,
+                            textStyle = TextStyle(fontSize = 14.sp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = md_theme_link_color,
+                                cursorColor = md_theme_link_color
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                                onDone = {
+                                    if (block.url.isNotBlank()) {
+                                        val normalized = if (block.url.startsWith("http://") || block.url.startsWith("https://")) {
+                                            block.url
+                                        } else {
+                                            "https://${block.url}"
+                                        }
+                                        onUpdateBlock(block.copy(url = normalized))
+                                        isEditing = false
+                                    } else {
+                                        onDelete()
+                                    }
+                                }
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Spacer(Modifier.height(8.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(
+                                onClick = {
+                                    if (block.url.isBlank()) {
+                                        onDelete()
+                                    } else {
+                                        isEditing = false
+                                    }
+                                }
+                            ) {
+                                Text("Anuluj", color = md_theme_link_color)
+                            }
+                            if (block.url.isNotBlank()) {
+                                Spacer(Modifier.width(8.dp))
+                                Button(
+                                    onClick = {
+                                        val normalized = if (block.url.startsWith("http://") || block.url.startsWith("https://")) {
+                                            block.url
+                                        } else {
+                                            "https://${block.url}"
+                                        }
+                                        onUpdateBlock(block.copy(url = normalized))
+                                        isEditing = false
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = md_theme_link_color)
+                                ) {
+                                    Text("Zapisz", color = Color.White)
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                val displayUrl = block.url
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(vertical = 4.dp, horizontal = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = md_theme_link_color.copy(alpha = 0.08f),
+                    tonalElevation = 0.dp,
+                    onClick = { if (displayUrl.isNotBlank()) showWebView = true }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Link,
+                            contentDescription = null,
+                            tint = md_theme_link_color,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            if (block.text.isNotBlank() && block.text != block.url) {
+                                Text(
+                                    text = block.text,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = md_theme_light_onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = displayUrl,
+                                    fontSize = 12.sp,
+                                    color = md_theme_link_color,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            } else {
+                                Text(
+                                    text = displayUrl,
+                                    fontSize = 14.sp,
+                                    color = md_theme_link_color,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        
+                        IconButton(
+                            onClick = { isEditing = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edytuj",
+                                tint = md_theme_light_onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        
+                        Spacer(Modifier.width(4.dp))
+                        
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = md_theme_light_onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            if (showWebView && block.url.isNotBlank()) {
+                WebViewDialog(
+                    url = block.url,
+                    onDismiss = { showWebView = false }
+                )
+            }
         } else {
             Box(modifier = Modifier.weight(1f)) {
                 val textStyle = when (block.type) {

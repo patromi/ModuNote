@@ -174,7 +174,7 @@ fun HomeScreen(
     val activity = context as FragmentActivity
 
     val pinnedNotes = remember(allNotes) {
-        allNotes.filter { it.isPinned && !it.content.startsWith("ENC:") }
+        allNotes.filter { it.isPinned }
     }
 
     var selectedTag by remember { mutableStateOf<String?>(null) }
@@ -518,15 +518,26 @@ private fun PinnedNoteCard(note: Note, onClick: () -> Unit) {
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(
-                    text = note.title.ifBlank { "Bez tytułu" },
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                    color = md_theme_light_onPrimaryContainer,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (note.content.isNotBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (note.isLocked) {
+                        Icon(
+                            Icons.Default.Lock,
+                            null,
+                            modifier = Modifier.size(12.dp),
+                            tint = md_theme_light_onPrimaryContainer
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        text = note.title.ifBlank { "Bez tytułu" },
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp,
+                        color = md_theme_light_onPrimaryContainer,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (note.content.isNotBlank() && !note.isLocked) {
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = note.content
@@ -536,6 +547,13 @@ private fun PinnedNoteCard(note: Note, onClick: () -> Unit) {
                         color = md_theme_light_onPrimaryContainer.copy(alpha = 0.7f),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
+                    )
+                } else if (note.isLocked) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "••••••••",
+                        fontSize = 11.sp,
+                        color = md_theme_light_onPrimaryContainer.copy(alpha = 0.7f)
                     )
                 }
             }

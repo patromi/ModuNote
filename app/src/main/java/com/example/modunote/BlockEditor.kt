@@ -504,17 +504,11 @@ fun BlockEditorScreen(
                                     }
                                     draggedIndex = -1; dragOffsetY = 0f; dropIndex = -1
                                 },
-                                onDragCancel = { draggedIndex = -1; dragOffsetY = 0f; dropIndex = -1 }
+                                onDragCancel = { draggedIndex = -1; dragOffsetY = 0f; dropIndex = -1 },
+                                onLocationChange = { lat, lon, addr ->
+                                    updateBlock(block.id) { it.copy(latitude = lat, longitude = lon, address = addr) }
+                                }
                             )
-                            if (block.type == BlockType.MAP) {
-                                MapBlock(
-                                    block = block,
-                                    isFocused = isFocused,
-                                    onLocationChange = { lat, lon, addr ->
-                                        updateBlock(block.id) { it.copy(latitude = lat, longitude = lon, address = addr) }
-                                    }
-                                )
-                            }
                         }
                     }
 
@@ -558,7 +552,8 @@ fun BlockItem(
     onDragStart: () -> Unit,
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
-    onDragCancel: () -> Unit
+    onDragCancel: () -> Unit,
+    onLocationChange: (Double, Double, String?) -> Unit = { _, _, _ -> }
 ) {
     // Divider block
     if (block.type == BlockType.DIVIDER) {
@@ -580,13 +575,13 @@ fun BlockItem(
             .alpha(if (isDragging) 0.65f else 1f)
             .background(if (isDropTarget) md_theme_link_color.copy(alpha = 0.07f) else Color.Transparent)
             .padding(start = 8.dp, end = 12.dp),
-        verticalAlignment = if (block.type == BlockType.TODO) Alignment.CenterVertically else Alignment.Top
+        verticalAlignment = if (block.type == BlockType.TODO || block.type == BlockType.MAP) Alignment.CenterVertically else Alignment.Top
     ) {
         // Drag handle
         Box(
             modifier = Modifier
                 .width(28.dp)
-                .padding(top = if (block.type == BlockType.H1) 10.dp else if (block.type in listOf(BlockType.H2, BlockType.H3)) 6.dp else 4.dp)
+                .padding(top = if (block.type == BlockType.H1) 10.dp else if (block.type in listOf(BlockType.H2, BlockType.H3)) 6.dp else if (block.type == BlockType.MAP) 0.dp else 4.dp)
                 .pointerInput(block.id) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { _ -> onDragStart() },
@@ -623,107 +618,115 @@ fun BlockItem(
         }
         if (block.type == BlockType.QUOTE) Spacer(Modifier.width(10.dp))
 
-        // Text area (with slash menu overlay)
-        Box(modifier = Modifier.weight(1f)) {
-            val textStyle = when (block.type) {
-                BlockType.H1 -> TextStyle(fontSize = 26.sp, fontWeight = FontWeight.Bold, color = md_theme_light_onSurface, lineHeight = 32.sp)
-                BlockType.H2 -> TextStyle(fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = md_theme_light_onSurface, lineHeight = 28.sp)
-                BlockType.H3 -> TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Medium, color = md_theme_light_onSurface, lineHeight = 24.sp)
-                BlockType.QUOTE -> TextStyle(fontSize = 15.sp, fontStyle = FontStyle.Italic, color = md_theme_light_onSurfaceVariant, lineHeight = 22.sp)
-                BlockType.CODE -> TextStyle(fontSize = 13.sp, fontFamily = FontFamily.Monospace, color = Color(0xFF80CBC4), lineHeight = 20.sp)
-                BlockType.TODO -> TextStyle(
-                    fontSize = 15.sp,
-                    color = if (block.checked) md_theme_light_onSurfaceVariant else md_theme_light_onSurface,
-                    textDecoration = if (block.checked) TextDecoration.LineThrough else TextDecoration.None,
-                    lineHeight = 22.sp
-                )
-                else -> TextStyle(fontSize = 15.sp, color = md_theme_light_onSurface, lineHeight = 22.sp)
-            }
-
-            val vertPad = when (block.type) {
-                BlockType.H1 -> 8.dp
-                BlockType.H2, BlockType.H3 -> 6.dp
-                else -> 4.dp
-            }
-
-            BasicTextField(
-                value = block.text,
-                onValueChange = onTextChange,
-                textStyle = textStyle,
-                cursorBrush = SolidColor(md_theme_link_color),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = vertPad, horizontal = if (block.type == BlockType.CODE) 0.dp else 4.dp)
-                    .then(
-                        if (block.type == BlockType.CODE)
-                            Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF1A1A2E))
-                                .padding(12.dp)
-                        else Modifier
-                    )
-                    .focusRequester(focusRequester)
-                    .onFocusChanged { if (it.isFocused) onFocus() }
-                    .onKeyEvent { event ->
-                        if (event.key == Key.Backspace && event.type == KeyEventType.KeyDown && block.text.isEmpty()) {
-                            onDelete(); true
-                        } else false
-                    },
-                decorationBox = { inner ->
-                    if (block.text.isEmpty() && isFocused) {
-                        Text(
-                            when (block.type) {
-                                BlockType.PARAGRAPH -> "Wpisz '/' aby dodac blok…"
-                                BlockType.H1 -> "Naglowek 1"
-                                BlockType.H2 -> "Naglowek 2"
-                                BlockType.H3 -> "Naglowek 3"
-                                BlockType.CODE -> "// wpisz kod…"
-                                BlockType.QUOTE -> "Cytat…"
-                                BlockType.BULLET -> "Element listy…"
-                                BlockType.NUMBERED -> "Element listy…"
-                                BlockType.TODO -> "Zadanie…"
-                                else -> ""
-                            },
-                            style = textStyle.copy(color = Color.LightGray)
-                        )
-                    }
-                    inner()
-                }
+        // Text area or Map
+        if (block.type == BlockType.MAP) {
+            MapBlock(
+                block = block,
+                isFocused = isFocused,
+                onLocationChange = onLocationChange
             )
+        } else {
+            Box(modifier = Modifier.weight(1f)) {
+                val textStyle = when (block.type) {
+                    BlockType.H1 -> TextStyle(fontSize = 26.sp, fontWeight = FontWeight.Bold, color = md_theme_light_onSurface, lineHeight = 32.sp)
+                    BlockType.H2 -> TextStyle(fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = md_theme_light_onSurface, lineHeight = 28.sp)
+                    BlockType.H3 -> TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Medium, color = md_theme_light_onSurface, lineHeight = 24.sp)
+                    BlockType.QUOTE -> TextStyle(fontSize = 15.sp, fontStyle = FontStyle.Italic, color = md_theme_light_onSurfaceVariant, lineHeight = 22.sp)
+                    BlockType.CODE -> TextStyle(fontSize = 13.sp, fontFamily = FontFamily.Monospace, color = Color(0xFF80CBC4), lineHeight = 20.sp)
+                    BlockType.TODO -> TextStyle(
+                        fontSize = 15.sp,
+                        color = if (block.checked) md_theme_light_onSurfaceVariant else md_theme_light_onSurface,
+                        textDecoration = if (block.checked) TextDecoration.LineThrough else TextDecoration.None,
+                        lineHeight = 22.sp
+                    )
+                    else -> TextStyle(fontSize = 15.sp, color = md_theme_light_onSurface, lineHeight = 22.sp)
+                }
 
-            // Slash command dropdown
-            if (showSlashMenu && filteredSlash.isNotEmpty()) {
-                Box(modifier = Modifier.padding(top = if (block.type == BlockType.H1) 40.dp else 28.dp)) {
-                    Card(
-                        modifier = Modifier.width(240.dp).heightIn(max = 280.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                    ) {
-                        LazyColumn {
-                            item {
-                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Bolt, null, Modifier.size(14.dp), tint = md_theme_link_color)
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Komendy", style = MaterialTheme.typography.labelSmall, color = md_theme_light_onSurfaceVariant)
+                val vertPad = when (block.type) {
+                    BlockType.H1 -> 8.dp
+                    BlockType.H2, BlockType.H3 -> 6.dp
+                    else -> 4.dp
+                }
+
+                BasicTextField(
+                    value = block.text,
+                    onValueChange = onTextChange,
+                    textStyle = textStyle,
+                    cursorBrush = SolidColor(md_theme_link_color),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = vertPad, horizontal = if (block.type == BlockType.CODE) 0.dp else 4.dp)
+                        .then(
+                            if (block.type == BlockType.CODE)
+                                Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFF1A1A2E))
+                                    .padding(12.dp)
+                            else Modifier
+                        )
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { if (it.isFocused) onFocus() }
+                        .onKeyEvent { event ->
+                            if (event.key == Key.Backspace && event.type == KeyEventType.KeyDown && block.text.isEmpty()) {
+                                onDelete(); true
+                            } else false
+                        },
+                    decorationBox = { inner ->
+                        if (block.text.isEmpty() && isFocused) {
+                            Text(
+                                when (block.type) {
+                                    BlockType.PARAGRAPH -> "Wpisz '/' aby dodac blok…"
+                                    BlockType.H1 -> "Naglowek 1"
+                                    BlockType.H2 -> "Naglowek 2"
+                                    BlockType.H3 -> "Naglowek 3"
+                                    BlockType.CODE -> "// wpisz kod…"
+                                    BlockType.QUOTE -> "Cytat…"
+                                    BlockType.BULLET -> "Element listy…"
+                                    BlockType.NUMBERED -> "Element listy…"
+                                    BlockType.TODO -> "Zadanie…"
+                                    else -> ""
+                                },
+                                style = textStyle.copy(color = Color.LightGray)
+                            )
+                        }
+                        inner()
+                    }
+                )
+
+                // Slash command dropdown
+                if (showSlashMenu && filteredSlash.isNotEmpty()) {
+                    Box(modifier = Modifier.padding(top = if (block.type == BlockType.H1) 40.dp else 28.dp)) {
+                        Card(
+                            modifier = Modifier.width(240.dp).heightIn(max = 280.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            LazyColumn {
+                                item {
+                                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Bolt, null, Modifier.size(14.dp), tint = md_theme_link_color)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Komendy", style = MaterialTheme.typography.labelSmall, color = md_theme_light_onSurfaceVariant)
+                                    }
+                                    HorizontalDivider()
                                 }
-                                HorizontalDivider()
-                            }
-                            items(filteredSlash) { cmd ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onSlashSelect(cmd) }
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier.size(28.dp).background(md_theme_light_surfaceContainerHigh, RoundedCornerShape(4.dp)),
-                                        contentAlignment = Alignment.Center
-                                    ) { cmd.icon() }
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text(cmd.label, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                        Text(cmd.hint, fontSize = 11.sp, color = md_theme_light_onSurfaceVariant)
+                                items(filteredSlash) { cmd ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onSlashSelect(cmd) }
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.size(28.dp).background(md_theme_light_surfaceContainerHigh, RoundedCornerShape(4.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) { cmd.icon() }
+                                        Spacer(Modifier.width(10.dp))
+                                        Column {
+                                            Text(cmd.label, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                            Text(cmd.hint, fontSize = 11.sp, color = md_theme_light_onSurfaceVariant)
+                                        }
                                     }
                                 }
                             }
@@ -826,6 +829,12 @@ fun MapBlock(
         // Address display / search
         Box(modifier = Modifier.fillMaxWidth()) {
             if (isEditing || (isFocused && block.address == null)) {
+                // Initialize query with current address when starting edit
+                LaunchedEffect(isEditing) {
+                    if (isEditing) {
+                        query = block.address ?: ""
+                    }
+                }
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },

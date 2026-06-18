@@ -798,7 +798,7 @@ fun ReminderDialogBlock(
         },
         dismissButton = {
             Row {
-                if (currentEnabled) TextButton(onClick = { onSave(0L, false) }) { Text("Usun", color = MaterialTheme.colorScheme.error) }
+                if (currentEnabled) TextButton(onClick = { onSave(0L, false) }) { Text("Usuń", color = MaterialTheme.colorScheme.error) }
                 TextButton(onClick = onDismiss) { Text("Anuluj") }
             }
         }

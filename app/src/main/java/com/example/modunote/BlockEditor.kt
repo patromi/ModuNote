@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -48,6 +49,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -508,8 +510,8 @@ fun BlockEditorScreen(
                                 MapBlock(
                                     block = block,
                                     isFocused = isFocused,
-                                    onLocationChange = { lat, lon ->
-                                        updateBlock(block.id) { it.copy(latitude = lat, longitude = lon) }
+                                    onLocationChange = { lat, lon, addr ->
+                                        updateBlock(block.id) { it.copy(latitude = lat, longitude = lon, address = addr) }
                                     }
                                 )
                             }
@@ -804,12 +806,13 @@ fun ReminderDialogBlock(
 fun MapBlock(
     block: Block,
     isFocused: Boolean,
-    onLocationChange: (Double, Double) -> Unit
+    onLocationChange: (Double, Double, String?) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(false) }
 
     val geoPoint = remember(block.latitude, block.longitude) {
         GeoPoint(block.latitude ?: 52.2297, block.longitude ?: 21.0122)
@@ -820,52 +823,85 @@ fun MapBlock(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
-        // Search bar - only visible when focused
-        AnimatedVisibility(visible = isFocused) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                placeholder = { Text("Wpisz adres (np. Warszawa, ul. Nowa 1)...", fontSize = 13.sp) },
-                trailingIcon = {
-                    if (isSearching) {
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        IconButton(onClick = {
-                            if (query.isNotBlank()) {
-                                isSearching = true
-                                scope.launch(Dispatchers.IO) {
-                                    try {
-                                        val url = URL("https://nominatim.openstreetmap.org/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}&format=json&limit=1")
-                                        val conn = url.openConnection() as HttpURLConnection
-                                        conn.setRequestProperty("User-Agent", "ModuNote-App")
-                                        val response = conn.inputStream.bufferedReader().readText()
-                                        val json = com.google.gson.JsonParser.parseString(response).asJsonArray
-                                        if (json.size() > 0) {
-                                            val first = json.get(0).asJsonObject
-                                            val lat = first.get("lat").asDouble
-                                            val lon = first.get("lon").asDouble
-                                            withContext(Dispatchers.Main) {
-                                                onLocationChange(lat, lon)
-                                                query = "" // Clear after search
+        // Address display / search
+        Box(modifier = Modifier.fillMaxWidth()) {
+            if (isEditing || (isFocused && block.address == null)) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    placeholder = { Text("Wpisz adres...", fontSize = 13.sp) },
+                    trailingIcon = {
+                        if (isSearching) {
+                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            IconButton(onClick = {
+                                if (query.isNotBlank()) {
+                                    isSearching = true
+                                    scope.launch(Dispatchers.IO) {
+                                        try {
+                                            val url = URL("https://nominatim.openstreetmap.org/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}&format=json&limit=1")
+                                            val conn = url.openConnection() as HttpURLConnection
+                                            conn.setRequestProperty("User-Agent", "ModuNote-App")
+                                            val response = conn.inputStream.bufferedReader().readText()
+                                            val json = com.google.gson.JsonParser.parseString(response).asJsonArray
+                                            if (json.size() > 0) {
+                                                val first = json.get(0).asJsonObject
+                                                val lat = first.get("lat").asDouble
+                                                val lon = first.get("lon").asDouble
+                                                val displayName = first.get("display_name").asString
+                                                withContext(Dispatchers.Main) {
+                                                    onLocationChange(lat, lon, displayName)
+                                                    query = ""
+                                                    isEditing = false
+                                                }
                                             }
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    } finally {
-                                        isSearching = false
+                                        } catch (e: Exception) { e.printStackTrace() }
+                                        finally { isSearching = false }
                                     }
                                 }
-                            }
-                        }) {
-                            Icon(Icons.Default.Search, null, Modifier.size(18.dp))
+                            }) { Icon(Icons.Default.Search, null, Modifier.size(18.dp)) }
                         }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    textStyle = TextStyle(fontSize = 14.sp)
+                )
+            } else if (block.address != null) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                        .pointerInput(block.id) {
+                            detectTapGestures(
+                                onTap = { isEditing = true },
+                                onLongPress = {
+                                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    val clip = android.content.ClipData.newPlainText("Address", block.address)
+                                    clipboard.setPrimaryClip(clip)
+                                    android.widget.Toast.makeText(context, "Adres skopiowany!", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        },
+                    color = md_theme_light_surfaceContainerHigh,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp, 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp), tint = md_theme_link_color)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = block.address ?: "",
+                            fontSize = 13.sp,
+                            color = md_theme_light_onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(fontSize = 14.sp)
-            )
+                }
+            }
         }
 
         // Map View
@@ -881,18 +917,12 @@ fun MapBlock(
                     MapView(ctx).apply {
                         setTileSource(TileSourceFactory.MAPNIK)
                         setMultiTouchControls(true)
-                        setBuiltInZoomControls(false) // Remove +/- buttons
+                        setBuiltInZoomControls(false)
                         zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
-                        
-                        // Disable panning/scrolling, allow only pinch-to-zoom
-                        setScrollableAreaLimitDouble(org.osmdroid.util.BoundingBox(85.0, 180.0, -85.0, -180.0)) // limit if needed
                         isVerticalMapRepetitionEnabled = false
                         isHorizontalMapRepetitionEnabled = false
-                        
                         controller.setZoom(15.0)
                         controller.setCenter(geoPoint)
-
-                        // Styling: Grayscale filter for a more "notey" look
                         val matrix = android.graphics.ColorMatrix().apply { setSaturation(0f) }
                         val filter = android.graphics.ColorMatrixColorFilter(matrix)
                         overlayManager.tilesOverlay.setColorFilter(filter)
@@ -906,7 +936,6 @@ fun MapBlock(
                         setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                         icon = ContextCompat.getDrawable(context, org.osmdroid.library.R.drawable.marker_default)
                         icon?.setTint(android.graphics.Color.parseColor("#6650A4"))
-                        // Disable marker dragging/interaction
                         setOnMarkerClickListener { _, _ -> true }
                     }
                     view.overlays.add(marker)

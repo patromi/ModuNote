@@ -13,5 +13,6 @@ data class Block(
     val checked: Boolean = false,
     val language: String = "",
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val address: String? = null
 )
